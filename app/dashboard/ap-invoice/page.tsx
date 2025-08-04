@@ -1,9 +1,9 @@
 
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
-import Link from 'next/link'
 import { APInvoicesList } from './components/ap-invoice-list'
 import { getAPInvoices } from '@/lib/actions/ap-invoice'
+import { APInvoiceForm } from './components/ap-invoice-form'
 
 export default async function APInvoicesPage() {
   const apInvoices = await getAPInvoices()
@@ -17,12 +17,12 @@ export default async function APInvoicesPage() {
             Manage supplier invoices and accounts payable
           </p>
         </div>
-        <Link href="/ap-invoices/new">
+        <APInvoiceForm>
           <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create AP Invoice
+              <Plus className="mr-2 h-4 w-4" />
+              Create AP Invoice
           </Button>
-        </Link>
+        </APInvoiceForm>
       </div>
 
       <APInvoicesList apInvoices={apInvoices} />

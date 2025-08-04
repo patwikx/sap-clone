@@ -38,7 +38,7 @@ const navigation = [
     children: [
       { name: 'Items', href: '/dashboard/items' },
       { name: 'Item Groups', href: '/dashboard/item-groups' },
-      { name: 'Warehouses', href: '/dashboard/warehouses' },
+      { name: 'Warehouses', href: '/dashboard/warehouse' },
       { name: 'Stock Status', href: '/dashboard/stock-status' }
     ]
   },
@@ -47,7 +47,7 @@ const navigation = [
     icon: TrendingUp,
     children: [
       { name: 'Sales Orders', href: '/dashboard/sales-order' },
-      { name: 'AR Invoices', href: '/dashboard/ar-invoices' },
+      { name: 'AR Invoices', href: '/dashboard/ar-invoice' },
       { name: 'Sales Reports', href: '/dashboard/sales-reports' }
     ]
   },
@@ -56,7 +56,7 @@ const navigation = [
     icon: ShoppingCart,
     children: [
       { name: 'Purchase Orders', href: '/dashboard/purchase-orders' },
-      { name: 'AP Invoices', href: '/dashboard/ap-invoices' },
+      { name: 'AP Invoices', href: '/dashboard/ap-invoice' },
       { name: 'Purchase Reports', href: '/dashboard/purchase-reports' }
     ]
   },
@@ -64,7 +64,7 @@ const navigation = [
     name: 'Production',
     icon: Settings,
     children: [
-      { name: 'Production Orders', href: '/dashboard/production-orders' },
+      { name: 'Production Orders', href: '/dashboard/production-order' },
       { name: 'Bill of Materials', href: '/dashboard/bill-of-materials' }
     ]
   },
@@ -82,7 +82,7 @@ const navigation = [
     name: 'Financials',
     icon: Calculator,
     children: [
-      { name: 'Chart of Accounts', href: '/dashboard/accounts' },
+      { name: 'Chart of Accounts', href: '/dashboard/chart-of-accounts' },
       { name: 'Journal Entries', href: '/dashboard/journal-entries' },
       { name: 'Financial Reports', href: '/dashboard/financial-reports' }
     ]

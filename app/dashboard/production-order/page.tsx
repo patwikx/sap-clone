@@ -2,8 +2,9 @@
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
-import { ProductionOrdersList } from './production-order-list'
+import { ProductionOrdersList } from './components/production-order-list'
 import { getProductionOrders } from '@/lib/actions/production-order'
+import { ProductionOrderForm } from './components/production-order-form'
 
 export default async function ProductionOrdersPage() {
   const productionOrders = await getProductionOrders()
@@ -17,12 +18,14 @@ export default async function ProductionOrdersPage() {
             Manage manufacturing orders and production planning
           </p>
         </div>
-        <Link href="/production-orders/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Production Order
+        <ProductionOrderForm>
+          <Button asChild>
+            <Link href="/dashboard/production-orders/create">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Production Order
+            </Link>
           </Button>
-        </Link>
+        </ProductionOrderForm>
       </div>
 
       <ProductionOrdersList productionOrders={productionOrders} />

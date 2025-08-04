@@ -117,16 +117,18 @@ export const apInvoiceSchema = z.object({
 })
 
 export const productionOrderSchema = z.object({
-  itemId: z.string().min(1, 'Item is required'),
-  type: z.enum(['S', 'P', 'D']).default('S'),
-  plannedQty: z.number().min(1, 'Planned quantity must be greater than 0'),
+  itemId: z.string(),
+  plannedQty: z.number(),
   postingDate: z.date(),
   dueDate: z.date(),
-  lines: z.array(z.object({
-    itemCode: z.string().min(1),
-    baseQty: z.number().min(0),
-    plannedQty: z.number().min(0)
-  })).optional()
+  type: z.enum(['S', 'P', 'D']),
+  lines: z.array(
+    z.object({
+      itemCode: z.string(),
+      baseQty: z.number(),
+      plannedQty: z.number(),
+    })
+  ).optional(),
 })
 
 export const serviceCallSchema = z.object({

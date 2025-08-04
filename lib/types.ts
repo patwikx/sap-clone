@@ -262,34 +262,4 @@ export interface KitchenOrderData {
   }>
 }
 
-// Report Types
-export interface DailySalesReport {
-  totalSales: number
-  totalOrders: number
-  averageOrderValue: number
-  paymentBreakdown: Record<string, number>
-  topItems: Array<{
-    itemCode: string
-    description: string
-    quantity: number
-    revenue: number
-  }>
-  orders: Array<{
-    id: string
-    number: string
-    createdAt: Date
-    totalAmount: Decimal
-    orderType: string
-    customer?: {
-      id: string
-      name: string
-    } | null
-    lines: Array<{
-      id: string
-      description: string
-      quantity: Decimal
-      unitPrice: Decimal
-      lineTotal: Decimal
-    }>
-  }>
-} 
+ 

@@ -102,8 +102,8 @@ export function TableDialog({
                     {tableCart.map((item) => (
                       <div key={item.itemCode} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                         <div className="flex-1">
-                          <p className="font-medium text-sm">{item.name}</p>
-                          <p className="text-xs text-gray-500">{item.code}</p>
+                          <p className="font-medium text-sm">{item.description}</p>
+                          <p className="text-xs text-gray-500">{item.itemCode}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm">Qty: {item.quantity}</span>

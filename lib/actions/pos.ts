@@ -593,7 +593,8 @@ export async function getDailySalesReport(date: Date, businessUnitId?: string): 
           include: {
             paymentMethod: true
           }
-        }
+        },
+        customer: true
       }
     })
 
@@ -630,12 +631,12 @@ export async function getDailySalesReport(date: Date, businessUnitId?: string): 
       totalSales,
       totalOrders,
       averageOrderValue,
-      salesByPaymentMethod: Object.entries(paymentBreakdown).map(([method, data]: [string, { amount: number; count: number }]) => ({
+      salesByPaymentMethod: Object.entries(paymentBreakdown).map(([method, data]) => ({
         paymentMethod: method,
         amount: data.amount,
         count: data.count
       })),
-      salesByCategory: Object.entries(salesByCategory).map(([category, data]: [string, { amount: number; quantity: number }]) => ({
+      salesByCategory: Object.entries(salesByCategory).map(([category, data]) => ({
         category,
         amount: data.amount,
         quantity: data.quantity

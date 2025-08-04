@@ -1,5 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Complete Enterprise ERP Schema for Hotel & Restaurant Management
+// This schema includes all core modules plus critical missing features
 
 datasource db {
   provider = "postgresql"
@@ -11,572 +11,2216 @@ generator client {
 }
 
 // =================================================================
-// System & Core Models (Users, Audit Logs)
+// Core Enterprise & System Models
 // =================================================================
 
-model User {
-  // Represents a system user
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  password  String // Hashed password
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model BusinessUnit {
+  id   String @id @default(cuid())
+  name String @unique // e.g., "Tropicana Hotel - GenSan", "Corporate HQ"
+  code String @unique // e.g., "THGS", "CORP"
 
-  employee  Employee?
-  auditLogs AuditLog[]
+  users               User[]
+  employees           Employee[]
+  purchaseRequests    PurchaseRequest[]
+  purchaseOrders      PurchaseOrder[]
+  purchaseReturns     PurchaseReturn[]
+  goodsReceiptPOs     GoodsReceiptPO[]
+  landedCosts         LandedCost[]
+  deliveries          Delivery[]
+  arInvoices          ARInvoice[]
+  apInvoices          APInvoice[]
+  hotelRooms          HotelRoom[]
+  posTerminals        POSTerminal[]
+  posOrders           POSOrder[]
+  posReturns          POSReturn[]
+  menus               Menu[]
+  restaurantTables    RestaurantTable[]
+  stockTransfersFrom  StockTransfer[]      @relation("FromBU")
+  stockTransfersTo    StockTransfer[]      @relation("ToBU")
+  inventoryCounts     InventoryCount[]
+  documentNumbering   DocumentNumbering[]
+  budgets             BudgetAmount[]
+  fixedAssets         FixedAsset[]
+  salesOrders         SalesOrder[]
+  roomInventories     RoomInventory[]
+  cashFlowForecasts   CashFlowForecast[]
+  maintenanceRequests MaintenanceRequest[]
+
+  @@map("OBU") // Business Unit
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String
+  password       String // Hashed password
+  isActive       Boolean  @default(true)
+  businessUnitId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  businessUnit     BusinessUnit      @relation(fields: [businessUnitId], references: [id])
+  employee         Employee?
+  auditLogs        AuditLog[]
+  approvalStages   ApprovalStage[]   @relation("StageApprovers")
+  approvalRequests ApprovalRequest[]
+  posShifts        POSShift[]
+  roles            UserRole[]
+  notifications    Notification[]
 
   @@map("OUSR")
 }
 
 model AuditLog {
-  // Corresponds to ADO1/Change Log functionality
   id            String   @id @default(cuid())
   userId        String
   timestamp     DateTime @default(now())
-  modelName     String // e.g., "BusinessPartner", "SalesOrder"
-  recordId      String // The ID of the record that was changed
+  modelName     String
+  recordId      String
   action        String // CREATE, UPDATE, DELETE
-  changedFields Json? // JSON object detailing the changes { "fieldName": { "old": "value1", "new": "value2" } }
+  changedFields Json?
 
   user User @relation(fields: [userId], references: [id])
 
-  @@map("ADO1_LOG") // Mapped to a custom log table
+  @@map("ADO1_LOG")
 }
 
 // =================================================================
-// Human Resources Module (OHEM)
+// Security & Role Management
+// =================================================================
+
+model Role {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+  isActive    Boolean @default(true)
+
+  permissions RolePermission[]
+  users       UserRole[]
+
+  @@map("OROLE")
+}
+
+model Permission {
+  id       String  @id @default(cuid())
+  module   String // "POS", "Inventory", "Accounting", "Hotel"
+  action   String // "CREATE", "READ", "UPDATE", "DELETE", "APPROVE"
+  resource String? // Specific resource within module
+
+  roles RolePermission[]
+
+  @@unique([module, action, resource])
+  @@map("OPERM")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+  @@map("OROLEPERM")
+}
+
+model UserRole {
+  userId String
+  roleId String
+
+  user User @relation(fields: [userId], references: [id])
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@id([userId, roleId])
+  @@map("OUSERROLE")
+}
+
+// =================================================================
+// Multi-Currency Support
+// =================================================================
+
+model Currency {
+  id     String  @id @default(cuid())
+  code   String  @unique // USD, EUR, PHP
+  name   String
+  symbol String
+  isBase Boolean @default(false)
+
+  exchangeRatesFrom ExchangeRate[] @relation("FromCurrency")
+  exchangeRatesTo   ExchangeRate[] @relation("ToCurrency")
+
+  @@map("OCUR")
+}
+
+model ExchangeRate {
+  id             String   @id @default(cuid())
+  fromCurrencyId String
+  toCurrencyId   String
+  rate           Float
+  effectiveDate  DateTime
+  createdAt      DateTime @default(now())
+
+  fromCurrency Currency @relation("FromCurrency", fields: [fromCurrencyId], references: [id])
+  toCurrency   Currency @relation("ToCurrency", fields: [toCurrencyId], references: [id])
+
+  @@unique([fromCurrencyId, toCurrencyId, effectiveDate])
+  @@map("OEXCH")
+}
+
+// =================================================================
+// Human Resources & Payroll Module
 // =================================================================
 
 model Employee {
-  // Corresponds to OHEM table in SAP B1
-  id          String  @id @default(cuid())
-  firstName   String
-  lastName    String
-  jobTitle    String?
-  department  String?
-  managerId   String?
-  officePhone String?
-  mobilePhone String?
-  email       String  @unique
+  id             String   @id @default(cuid())
+  firstName      String
+  lastName       String
+  jobTitle       String?
+  department     String?
+  email          String   @unique
+  userId         String?  @unique
+  managerId      String?
+  businessUnitId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  userId String? @unique // Link to a system user account
-  user   User?   @relation(fields: [userId], references: [id])
-
-  manager      Employee?  @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  subordinates Employee[] @relation("EmployeeManager")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  businessUnit           BusinessUnit         @relation(fields: [businessUnitId], references: [id])
+  user                   User?                @relation(fields: [userId], references: [id])
+  manager                Employee?            @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subordinates           Employee[]           @relation("EmployeeManager")
+  purchaseRequests       PurchaseRequest[]
+  housekeepingLogs       HousekeepingLog[]
+  housekeepingTasks      HousekeepingTask[]
+  maintenanceRequests    MaintenanceRequest[] @relation("RequestedBy")
+  maintenanceAssignments MaintenanceRequest[] @relation("AssignedTo")
 
   @@map("OHEM")
 }
 
 // =================================================================
-// Business Partners Module (OCRD, CRD1)
+// Business Partners & CRM Module
 // =================================================================
 
 model BusinessPartner {
-  // Corresponds to OCRD table in SAP B1
   id        String   @id @default(cuid())
-  cardCode  String   @unique // BP Code
-  cardName  String // BP Name
-  cardType  String // 'C' for Customer, 'S' for Supplier, 'L' for Lead
+  cardCode  String   @unique
+  cardName  String
+  cardType  String // 'C' for Customer, 'S' for Supplier, 'G' for Guest, 'L' for Lead
   groupCode Int
-  phone1    String?
-  phone2    String?
   email     String?
-  website   String?
-  notes     String?
+  phone1    String?
   balance   Float    @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   addresses         BusinessPartnerAddress[]
-  salesOrders       SalesOrder[]
+  purchaseRequests  PurchaseRequest[]
   purchaseOrders    PurchaseOrder[]
+  purchaseReturns   PurchaseReturn[]
+  goodsReceiptPOs   GoodsReceiptPO[]
+  deliveries        Delivery[]
   arInvoices        ARInvoice[]
   apInvoices        APInvoice[]
-  journalEntryLines JournalEntryLine[]
-  serviceContracts  ServiceContract[]
-  serviceCalls      ServiceCall[]
-  equipmentCards    CustomerEquipmentCard[]
+  hotelBookings     HotelBooking[]
+  posOrders         POSOrder[]
+  opportunities     Opportunity[]
+  activities        Activity[]
+  vendorPriceLists  VendorPriceList[]
+  salesOrders       SalesOrder[]
+  customerCredit    CustomerCredit?
+  guestPreferences  GuestPreference[]
+  guestHistory      GuestHistory[]
+  guestLoyalty      GuestLoyalty?
+  groupBookings     GroupBooking[]
+  walkInGuests      WalkInGuest[]
+  itemReorderPoints ItemReorderPoint[]
 
   @@map("OCRD")
 }
 
 model BusinessPartnerAddress {
-  // Corresponds to CRD1 table in SAP B1
-  id          String  @id @default(cuid())
-  addressName String
-  street      String?
-  city        String?
-  zipCode     String?
-  state       String?
-  country     String
-  addressType String // 'bo_BillTo' or 'bo_ShipTo'
-
+  id                String  @id @default(cuid())
+  addressName       String
+  street            String?
+  city              String?
+  zipCode           String?
+  country           String
+  addressType       String // 'bo_BillTo' or 'bo_ShipTo'
   businessPartnerId String
-  businessPartner   BusinessPartner @relation(fields: [businessPartnerId], references: [id])
+
+  businessPartner BusinessPartner @relation(fields: [businessPartnerId], references: [id])
 
   @@map("CRD1")
 }
 
+model Opportunity {
+  id              String   @id @default(cuid())
+  name            String
+  cardCode        String
+  potentialAmount Float
+  closingDate     DateTime
+  stage           String // e.g., "Lead", "Quotation", "Won", "Lost"  
+
+  businessPartner BusinessPartner @relation(fields: [cardCode], references: [cardCode])
+  activities      Activity[]
+
+  @@map("OOPR")
+}
+
+model Activity {
+  id            Int      @id @default(autoincrement())
+  type          String // "Call", "Meeting", "Task", "Note"
+  subject       String
+  details       String?
+  date          DateTime
+  cardCode      String
+  opportunityId String?
+
+  businessPartner BusinessPartner @relation(fields: [cardCode], references: [cardCode])
+  opportunity     Opportunity?    @relation(fields: [opportunityId], references: [id])
+
+  @@map("OACR")
+}
+
 // =================================================================
-// Financials Module (OACT, OJDT, JDT1, OPMG)
+// Guest CRM Enhancements
 // =================================================================
 
+model GuestPreference {
+  id         String   @id @default(cuid())
+  guestId    String
+  category   String // "ROOM", "DINING", "SERVICES", "AMENITIES"
+  preference String
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  guest BusinessPartner @relation(fields: [guestId], references: [id])
+
+  @@map("OGPREF")
+}
+
+model GuestHistory {
+  id           String   @id @default(cuid())
+  guestId      String
+  visitDate    DateTime
+  roomType     String
+  totalSpent   Float
+  satisfaction Int? // 1-5 rating
+  notes        String?
+
+  guest BusinessPartner @relation(fields: [guestId], references: [id])
+
+  @@map("OGHIST")
+}
+
+// =================================================================
+// Loyalty & Rewards Program
+// =================================================================
+
+model LoyaltyProgram {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+  pointsRatio Float // Points per dollar spent
+  isActive    Boolean @default(true)
+
+  tiers   LoyaltyTier[]
+  members GuestLoyalty[]
+
+  @@map("OLPROG")
+}
+
+model LoyaltyTier {
+  id              String   @id @default(cuid())
+  programId       String
+  name            String // "Bronze", "Silver", "Gold", "Platinum"
+  minimumPoints   Int
+  discountPercent Float
+  benefits        String[] // JSON array of benefits
+
+  program LoyaltyProgram @relation(fields: [programId], references: [id])
+  members GuestLoyalty[]
+
+  @@map("OLTIER")
+}
+
+model GuestLoyalty {
+  id            String   @id @default(cuid())
+  guestId       String   @unique
+  programId     String
+  tierId        String
+  currentPoints Int      @default(0)
+  totalEarned   Int      @default(0)
+  totalRedeemed Int      @default(0)
+  joinDate      DateTime @default(now())
+
+  guest        BusinessPartner      @relation(fields: [guestId], references: [id])
+  program      LoyaltyProgram       @relation(fields: [programId], references: [id])
+  tier         LoyaltyTier          @relation(fields: [tierId], references: [id])
+  transactions LoyaltyTransaction[]
+
+  @@map("OLOYAL")
+}
+
+model LoyaltyTransaction {
+  id          String   @id @default(cuid())
+  loyaltyId   String
+  type        String // "EARN", "REDEEM", "EXPIRE", "ADJUST"
+  points      Int
+  description String
+  referenceId String? // Reference to order/booking
+  createdAt   DateTime @default(now())
+
+  loyalty GuestLoyalty @relation(fields: [loyaltyId], references: [id])
+
+  @@map("OLTRANS")
+}
+
+// =================================================================
+// Notification System
+// =================================================================
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String // "INFO", "WARNING", "ERROR", "SUCCESS"
+  priority  String    @default("NORMAL") // "LOW", "NORMAL", "HIGH", "URGENT"
+  isRead    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("ONOTIF")
+}
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  subject   String
+  body      String // HTML template
+  variables String[] // Placeholders like {guestName}, {bookingCode}
+  isActive  Boolean  @default(true)
+
+  @@map("OEMAIL")
+}
+
+// =================================================================
+// Maintenance Management System
+// =================================================================
+
+model MaintenanceRequest {
+  id             String    @id @default(cuid())
+  requestNumber  String    @unique
+  requestType    String // "PREVENTIVE", "CORRECTIVE", "EMERGENCY"
+  priority       String // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+  status         String    @default("OPEN") // "OPEN", "IN_PROGRESS", "COMPLETED", "CANCELLED"
+  roomId         String?
+  assetId        String?
+  description    String
+  requestedById  String
+  assignedToId   String?
+  businessUnitId String
+  requestedAt    DateTime  @default(now())
+  completedAt    DateTime?
+
+  room         HotelRoom?        @relation(fields: [roomId], references: [id])
+  asset        FixedAsset?       @relation(fields: [assetId], references: [id])
+  requestedBy  Employee          @relation("RequestedBy", fields: [requestedById], references: [id])
+  assignedTo   Employee?         @relation("AssignedTo", fields: [assignedToId], references: [id])
+  businessUnit BusinessUnit      @relation(fields: [businessUnitId], references: [id])
+  tasks        MaintenanceTask[]
+
+  @@map("OMREQ")
+}
+
+model MaintenanceTask {
+  id                   String    @id @default(cuid())
+  maintenanceRequestId String
+  taskDescription      String
+  estimatedHours       Float?
+  actualHours          Float?
+  status               String    @default("PENDING") // "PENDING", "IN_PROGRESS", "COMPLETED"
+  completedAt          DateTime?
+  notes                String?
+
+  maintenanceRequest MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id])
+
+  @@map("OMTASK")
+}
+
+model PreventiveMaintenance {
+  id            String    @id @default(cuid())
+  assetId       String
+  name          String
+  description   String?
+  frequency     String // "DAILY", "WEEKLY", "MONTHLY", "QUARTERLY", "ANNUALLY"
+  frequencyDays Int // Number of days between maintenance
+  lastDone      DateTime?
+  nextDue       DateTime
+  isActive      Boolean   @default(true)
+
+  asset FixedAsset @relation(fields: [assetId], references: [id])
+
+  @@map("OPREV")
+}
+
+// =================================================================
+// Financials, Accounting Periods, Budgeting, Fixed Assets & Tax Module
+// =================================================================
+
+model FiscalYear {
+  id        String   @id @default(cuid())
+  name      String   @unique // e.g., "Fiscal Year 2025"
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("Open") // Open, Closed
+
+  periods         FinancialPeriod[]
+  budgetScenarios BudgetScenario[]
+
+  @@map("OFY")
+}
+
+model FinancialPeriod {
+  id           String   @id @default(cuid())
+  name         String // e.g., "Jan 2025"
+  code         String   @unique
+  startDate    DateTime
+  endDate      DateTime
+  status       String   @default("Open") // Open, Closed, Locked
+  fiscalYearId String
+
+  fiscalYear     FiscalYear     @relation(fields: [fiscalYearId], references: [id])
+  journalEntries JournalEntry[]
+  budgetAmounts  BudgetAmount[]
+
+  @@map("OFP")
+}
+
 model Account {
-  // Corresponds to OACT table in SAP B1
   id               String   @id @default(cuid())
   acctCode         String   @unique
   acctName         String
-  acctType         String // e.g., 'asset', 'liability', 'equity', 'revenue', 'expense'
+  acctType         String // asset, liability, equity, revenue, expense
   balance          Float    @default(0)
   isControlAccount Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  journalEntryLines JournalEntryLine[]
+  journalEntryLines             JournalEntryLine[]
+  budgetAmounts                 BudgetAmount[]
+  houseBankAccounts             HouseBankAccount[]
+  assetAccountClasses           FixedAssetClass[]       @relation("AssetGLAccounts")
+  accDepreciationAccountClasses FixedAssetClass[]       @relation("AccDepGLAccounts")
+  depExpenseAccountClasses      FixedAssetClass[]       @relation("DepExpGLAccounts")
+  costCenterTransactions        CostCenterTransaction[]
+  recurringJELines              RecurringJELine[]
 
   @@map("OACT")
 }
 
 model JournalEntry {
-  // Corresponds to OJDT table in SAP B1
-  id        Int       @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   memo      String?
   refDate   DateTime
-  dueDate   DateTime?
-  taxDate   DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  periodId  String
+  createdAt DateTime @default(now())
 
-  lines JournalEntryLine[]
+  period FinancialPeriod    @relation(fields: [periodId], references: [id])
+  lines  JournalEntryLine[]
 
   @@map("OJDT")
 }
 
 model JournalEntryLine {
-  // Corresponds to JDT1 table in SAP B1
   id             Int     @id @default(autoincrement())
   journalEntryId Int
-  line_id        Int
   accountId      String
   debit          Float
   credit         Float
-  shortName      String? // Could be BP code or G/L Account code
   lineMemo       String?
 
-  journalEntry      JournalEntry     @relation(fields: [journalEntryId], references: [id])
-  account           Account          @relation(fields: [accountId], references: [id])
-  businessPartner   BusinessPartner? @relation(fields: [businessPartnerId], references: [id])
-  businessPartnerId String?
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id])
+  account      Account      @relation(fields: [accountId], references: [id])
 
   @@map("JDT1")
 }
 
-model Project {
-  // Corresponds to OPMG table
-  id        String    @id @default(cuid())
-  code      String    @unique
-  name      String
-  startDate DateTime?
-  endDate   DateTime?
-  isActive  Boolean   @default(true)
+model TaxGroup {
+  id       String  @id @default(cuid())
+  code     String  @unique
+  name     String
+  isActive Boolean @default(true)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  taxCodes TaxCode[]
 
-  @@map("OPMG")
+  @@map("OVTG")
+}
+
+model TaxCode {
+  id         String @id @default(cuid())
+  code       String @unique
+  name       String
+  rate       Float // e.g., 12 for 12%
+  taxGroupId String
+
+  taxGroup          TaxGroup           @relation(fields: [taxGroupId], references: [id])
+  arInvoiceLines    ARInvoiceLine[]
+  apInvoiceLines    APInvoiceLine[]
+  posOrderLines     POSOrderLine[]
+  folioTransactions FolioTransaction[]
+
+  @@map("OSTC")
+}
+
+model DocumentNumbering {
+  id             String @id @default(cuid())
+  documentType   String // e.g., "ARInvoice", "PurchaseOrder"
+  seriesName     String
+  prefix         String
+  nextNumber     Int
+  businessUnitId String
+
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id])
+
+  @@unique([documentType, businessUnitId])
+  @@map("NNM1")
+}
+
+model BudgetScenario {
+  id           String @id @default(cuid())
+  name         String
+  fiscalYearId String
+
+  fiscalYear FiscalYear     @relation(fields: [fiscalYearId], references: [id])
+  amounts    BudgetAmount[]
+
+  @@map("OBGS")
+}
+
+model BudgetAmount {
+  id             String @id @default(cuid())
+  scenarioId     String
+  periodId       String
+  accountId      String
+  businessUnitId String
+  amount         Float
+
+  scenario     BudgetScenario  @relation(fields: [scenarioId], references: [id])
+  period       FinancialPeriod @relation(fields: [periodId], references: [id])
+  account      Account         @relation(fields: [accountId], references: [id])
+  businessUnit BusinessUnit    @relation(fields: [businessUnitId], references: [id])
+
+  @@map("BGT1")
+}
+
+model FixedAssetClass {
+  id                             String @id @default(cuid())
+  name                           String @unique
+  assetAccountCode               String
+  accDepreciationAccountCode     String
+  depreciationExpenseAccountCode String
+
+  assetAccount               Account      @relation("AssetGLAccounts", fields: [assetAccountCode], references: [acctCode])
+  accDepreciationAccount     Account      @relation("AccDepGLAccounts", fields: [accDepreciationAccountCode], references: [acctCode])
+  depreciationExpenseAccount Account      @relation("DepExpGLAccounts", fields: [depreciationExpenseAccountCode], references: [acctCode])
+  assets                     FixedAsset[]
+
+  @@map("OAFC")
+}
+
+model DepreciationType {
+  id     String @id @default(cuid())
+  name   String @unique // e.g., "Straight Line"
+  method String
+
+  assets FixedAsset[]
+
+  @@map("ODPT")
+}
+
+model FixedAsset {
+  id                 String   @id @default(cuid())
+  assetCode          String   @unique
+  description        String
+  acquisitionDate    DateTime
+  acquisitionCost    Float
+  usefulLife         Int // in months
+  salvageValue       Float
+  status             String   @default("Active")
+  assetClassId       String
+  depreciationTypeId String
+  businessUnitId     String
+
+  assetClass            FixedAssetClass         @relation(fields: [assetClassId], references: [id])
+  depreciationType      DepreciationType        @relation(fields: [depreciationTypeId], references: [id])
+  businessUnit          BusinessUnit            @relation(fields: [businessUnitId], references: [id])
+  maintenanceRequests   MaintenanceRequest[]
+  preventiveMaintenance PreventiveMaintenance[]
+
+  @@map("OFIX")
 }
 
 // =================================================================
-// Inventory Module (OITM, OITW, OITB)
+// Accounts Receivable & Payable Enhancements
 // =================================================================
 
+model CustomerCredit {
+  id             String    @id @default(cuid())
+  customerId     String    @unique
+  creditLimit    Float
+  currentBalance Float     @default(0)
+  paymentTerms   String // "NET30", "NET15", "COD"
+  creditStatus   String    @default("GOOD") // "GOOD", "HOLD", "BLOCKED"
+  lastReviewDate DateTime?
+
+  customer BusinessPartner @relation(fields: [customerId], references: [id])
+
+  @@map("OCREDIT")
+}
+
+model ARAgingBucket {
+  id         String   @id @default(cuid())
+  customerId String
+  current    Float    @default(0)
+  days30     Float    @default(0)
+  days60     Float    @default(0)
+  days90     Float    @default(0)
+  over90     Float    @default(0)
+  totalDue   Float    @default(0)
+  asOfDate   DateTime
+
+  @@unique([customerId, asOfDate])
+  @@map("OAGING")
+}
+
+model CashFlowForecast {
+  id             String   @id @default(cuid())
+  forecastDate   DateTime
+  openingCash    Float
+  projectedIn    Float
+  projectedOut   Float
+  closingCash    Float
+  businessUnitId String
+
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id])
+
+  @@unique([forecastDate, businessUnitId])
+  @@map("OCFLOW")
+}
+
+model RecurringJournalEntry {
+  id           String   @id @default(cuid())
+  templateName String   @unique
+  description  String?
+  frequency    String // "MONTHLY", "QUARTERLY", "ANNUALLY"
+  nextRunDate  DateTime
+  isActive     Boolean  @default(true)
+  autoPost     Boolean  @default(false)
+
+  lines RecurringJELine[]
+
+  @@map("ORJE")
+}
+
+model RecurringJELine {
+  id                      String  @id @default(cuid())
+  recurringJournalEntryId String
+  accountId               String
+  debitAmount             Float?
+  creditAmount            Float?
+  description             String?
+
+  recurringJE RecurringJournalEntry @relation(fields: [recurringJournalEntryId], references: [id])
+  account     Account               @relation(fields: [accountId], references: [id])
+
+  @@map("ORJE1")
+}
+
+model CostCenter {
+  id           String  @id @default(cuid())
+  code         String  @unique
+  name         String
+  managerId    String?
+  budgetAmount Float?
+  isActive     Boolean @default(true)
+
+  transactions CostCenterTransaction[]
+
+  @@map("OCCTR")
+}
+
+model CostCenterTransaction {
+  id              String   @id @default(cuid())
+  costCenterId    String
+  accountId       String
+  amount          Float
+  description     String
+  transactionDate DateTime
+
+  costCenter CostCenter @relation(fields: [costCenterId], references: [id])
+  account    Account    @relation(fields: [accountId], references: [id])
+
+  @@map("OCCTR1")
+}
+
+// =================================================================
+// Banking & Reconciliation Module
+// =================================================================
+
+model HouseBankAccount {
+  id            String @id @default(cuid())
+  accountName   String
+  accountNumber String @unique
+  bankName      String
+  branch        String
+  glAccountId   String @unique
+
+  glAccount  Account         @relation(fields: [glAccountId], references: [id])
+  statements BankStatement[]
+
+  @@map("ODBC")
+}
+
+model BankStatement {
+  id                 String   @id @default(cuid())
+  statementNumber    String
+  statementDate      DateTime
+  openingBalance     Float
+  closingBalance     Float
+  houseBankAccountId String
+
+  houseBankAccount HouseBankAccount    @relation(fields: [houseBankAccountId], references: [id])
+  lines            BankStatementLine[]
+  reconciliations  Reconciliation[]
+
+  @@map("OBNK")
+}
+
+model BankStatementLine {
+  id              String   @id @default(cuid())
+  bankStatementId String
+  transactionDate DateTime
+  amount          Float
+  description     String
+  isReconciled    Boolean  @default(false)
+
+  bankStatement BankStatement @relation(fields: [bankStatementId], references: [id])
+
+  @@map("BNK1")
+}
+
+model Reconciliation {
+  id                 String   @id @default(cuid())
+  reconciliationDate DateTime
+  bankStatementId    String
+
+  bankStatement BankStatement @relation(fields: [bankStatementId], references: [id])
+
+  @@map("ORCN")
+}
+
+// =================================================================
+// Logistics, Advanced Inventory & Item Master Data
+// =================================================================
+
+model UnitOfMeasureGroup {
+  id   String @id @default(cuid())
+  name String @unique
+
+  uoms  UnitOfMeasure[]
+  items Item[]
+
+  @@map("OUOM")
+}
+
+model UnitOfMeasure {
+  id               String @id @default(cuid())
+  name             String // e.g., "Gram", "Kilogram"
+  code             String @unique
+  baseUoM          String // e.g., "g"
+  conversionFactor Float
+  uomGroupId       String
+
+  uomGroup UnitOfMeasureGroup @relation(fields: [uomGroupId], references: [id])
+
+  @@map("UOM1")
+}
+
 model Item {
-  // Corresponds to OITM table in SAP B1
   id                String   @id @default(cuid())
   itemCode          String   @unique
   itemName          String
-  itemType          String   @default("I") // I-Inventory, S-Sales, P-Purchase
-  onHand            Float    @default(0)
-  committed         Float    @default(0)
-  onOrder           Float    @default(0)
+  itemType          String   @default("I") // I-Inventory, S-Service, H-Hotel Room, M-Menu Item
   price             Float
+  avgCost           Float    @default(0)
   currency          String
   procurementMethod String   @default("B") // B-Buy, M-Make
-  leadTime          Int      @default(1) // in days
+  manageBy          String   @default("None") // None, Serial, Batch
+  itemGroupId       String
+  uomGroupId        String
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  itemGroupId          String
-  itemGroup            ItemGroup               @relation(fields: [itemGroupId], references: [id])
-  salesOrderLines      SalesOrderLine[]
+  itemGroup            ItemGroup             @relation(fields: [itemGroupId], references: [id])
+  uomGroup             UnitOfMeasureGroup    @relation(fields: [uomGroupId], references: [id])
+  itemWarehouses       ItemWarehouse[]
+  purchaseRequestLines PurchaseRequestLine[]
   purchaseOrderLines   PurchaseOrderLine[]
+  purchaseReturnLines  PurchaseReturnLine[]
+  goodsReceiptPOLines  GoodsReceiptPOLine[]
+  deliveryLines        DeliveryLine[]
   arInvoiceLines       ARInvoiceLine[]
   apInvoiceLines       APInvoiceLine[]
-  itemWarehouses       ItemWarehouse[]
-  billOfMaterials      BillOfMaterials[]
-  bomLines             BillOfMaterialsLine[]
-  productionOrders     ProductionOrder[]
-  productionOrderLines ProductionOrderLine[]
-  equipmentCards       CustomerEquipmentCard[]
+  posOrderLines        POSOrderLine[]
+  posReturnLines       POSReturnLine[]
+  hotelRoomType        HotelRoomType?
+  menuItems            MenuItem[]
+  stockTransferLines   StockTransferLine[]
+  inventoryCountLines  InventoryCountLine[]
+  serialNumbers        SerialNumber[]
+  batchNumbers         BatchNumber[]
+  vendorPriceLists     VendorPriceList[]
+  salesOrderLines      SalesOrderLine[]
+  itemReorderPoints    ItemReorderPoint[]
+  wasteTracking        WasteTracking[]
+  itemLocations        ItemLocation[]
+  itemExpiries         ItemExpiry[]
+  recipeIngredients    RecipeIngredient[]
+  recipes              Recipe[]              @relation("RecipeMenuItem")
 
   @@map("OITM")
 }
 
 model ItemGroup {
-  // Corresponds to OITB
   id        String @id @default(cuid())
   groupName String @unique
-  items     Item[]
+
+  items Item[]
 
   @@map("OITB")
 }
 
 model Warehouse {
-  id        String   @id @default(cuid())
-  whsCode   String   @unique
-  whsName   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id      String @id @default(cuid())
+  whsCode String @unique
+  whsName String
 
-  itemWarehouses ItemWarehouse[]
+  itemWarehouses     ItemWarehouse[]
+  stockTransfersFrom StockTransfer[]    @relation("FromWhs")
+  stockTransfersTo   StockTransfer[]    @relation("ToWhs")
+  inventoryCounts    InventoryCount[]
+  itemReorderPoints  ItemReorderPoint[]
 
   @@map("OWHS")
 }
 
 model ItemWarehouse {
-  // Corresponds to OITW table in SAP B1
-  id        String @id @default(cuid())
-  onHand    Float  @default(0)
-  committed Float  @default(0)
-  onOrder   Float  @default(0)
-  minStock  Float  @default(0)
-  maxStock  Float  @default(0)
-
+  id          String @id @default(cuid())
+  onHand      Float  @default(0)
+  committed   Float  @default(0)
+  onOrder     Float  @default(0)
+  avgCost     Float  @default(0)
   itemId      String
   warehouseId String
-  item        Item      @relation(fields: [itemId], references: [id])
-  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+
+  item      Item      @relation(fields: [itemId], references: [id])
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
 
   @@unique([itemId, warehouseId])
   @@map("OITW")
 }
 
-// =================================================================
-// Production Module (OITT, ITT1, OWOR, WOR1)
-// =================================================================
+model SerialNumber {
+  id     String @id @default(cuid())
+  number String @unique
+  itemId String
 
-model BillOfMaterials {
-  // Corresponds to OITT table
-  id          String @id @default(cuid())
-  bomCode     String @unique
-  description String
-  quantity    Float  @default(1) // Quantity of the parent produced
+  item Item @relation(fields: [itemId], references: [id])
 
-  parentItemId String
-  parentItem   Item                  @relation(fields: [parentItemId], references: [id])
-  lines        BillOfMaterialsLine[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("OITT")
+  @@map("OSRN")
 }
 
-model BillOfMaterialsLine {
-  // Corresponds to ITT1 table
-  id                String @id @default(cuid())
-  billOfMaterialsId String
-  lineNumber        Int
-  childItemId       String
+model BatchNumber {
+  id         String    @id @default(cuid())
+  number     String    @unique
+  itemId     String
+  expiryDate DateTime?
+
+  item Item @relation(fields: [itemId], references: [id])
+
+  @@map("OBTN")
+}
+
+model StockTransfer {
+  id                 Int      @id @default(autoincrement())
+  docNum             Int      @unique
+  docDate            DateTime
+  fromWhsCode        String
+  toWhsCode          String
+  fromBusinessUnitId String
+  toBusinessUnitId   String
+  remarks            String?
+
+  fromWarehouse    Warehouse           @relation("FromWhs", fields: [fromWhsCode], references: [whsCode])
+  toWarehouse      Warehouse           @relation("ToWhs", fields: [toWhsCode], references: [whsCode])
+  fromBusinessUnit BusinessUnit        @relation("FromBU", fields: [fromBusinessUnitId], references: [id])
+  toBusinessUnit   BusinessUnit        @relation("ToBU", fields: [toBusinessUnitId], references: [id])
+  lines            StockTransferLine[]
+
+  @@map("OWTR")
+}
+
+model StockTransferLine {
+  id              Int    @id @default(autoincrement())
+  stockTransferId Int
+  itemCode        String
+  quantity        Float
+
+  stockTransfer StockTransfer @relation(fields: [stockTransferId], references: [id])
+  item          Item          @relation(fields: [itemCode], references: [itemCode])
+
+  @@map("WTR1")
+}
+
+model InventoryCount {
+  id             Int      @id @default(autoincrement())
+  docNum         Int      @unique
+  docDate        DateTime
+  warehouseId    String
+  businessUnitId String
+  remarks        String?
+
+  warehouse    Warehouse            @relation(fields: [warehouseId], references: [id])
+  businessUnit BusinessUnit         @relation(fields: [businessUnitId], references: [id])
+  lines        InventoryCountLine[]
+
+  @@map("OINC")
+}
+
+model InventoryCountLine {
+  id               Int    @id @default(autoincrement())
+  inventoryCountId Int
+  itemCode         String
+  countedQty       Float
+  systemQty        Float
+  variance         Float
+
+  inventoryCount InventoryCount @relation(fields: [inventoryCountId], references: [id])
+  item           Item           @relation(fields: [itemCode], references: [itemCode])
+
+  @@map("INC1")
+}
+
+// =================================================================
+// Inventory Enhancements
+// =================================================================
+
+model ItemReorderPoint {
+  id           String  @id @default(cuid())
+  itemId       String
+  warehouseId  String
+  minLevel     Float
+  maxLevel     Float
+  reorderQty   Float
+  leadTimeDays Int
+  vendorId     String?
+
+  item      Item             @relation(fields: [itemId], references: [id])
+  warehouse Warehouse        @relation(fields: [warehouseId], references: [id])
+  vendor    BusinessPartner? @relation(fields: [vendorId], references: [id])
+
+  @@unique([itemId, warehouseId])
+  @@map("OREORDER")
+}
+
+model AutoReorderSuggestion {
+  id            String   @id @default(cuid())
+  itemId        String
+  warehouseId   String
+  suggestedQty  Float
+  estimatedCost Float
+  urgencyLevel  String // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+  createdAt     DateTime @default(now())
+  status        String   @default("PENDING") // "PENDING", "APPROVED", "ORDERED", "REJECTED"
+
+  @@map("OAUTO")
+}
+
+model WasteTracking {
+  id         String   @id @default(cuid())
+  itemId     String
+  quantity   Float
+  reason     String // "EXPIRED", "DAMAGED", "OVERPRODUCTION", "SPILLAGE"
+  cost       Float
+  reportedBy String
+  reportedAt DateTime @default(now())
+
+  item Item @relation(fields: [itemId], references: [id])
+
+  @@map("OWASTE")
+}
+
+model InventoryValuation {
+  id          String   @id @default(cuid())
+  itemId      String
+  warehouseId String
+  method      String // "FIFO", "LIFO", "AVERAGE", "STANDARD"
+  unitCost    Float
+  totalValue  Float
+  asOfDate    DateTime
+
+  @@unique([itemId, warehouseId, asOfDate])
+  @@map("OVAL")
+}
+
+model ItemLocation {
+  id          String  @id @default(cuid())
+  itemId      String
+  warehouseId String
+  binLocation String? // Specific location within warehouse
+  quantity    Float
+
+  item Item @relation(fields: [itemId], references: [id])
+
+  @@map("OITLOC")
+}
+
+model StockAlert {
+  id           String   @id @default(cuid())
+  itemId       String
+  alertType    String // "LOW_STOCK", "EXPIRY", "OVERSTOCK"
+  threshold    Float
+  currentLevel Float
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@map("OSALERT")
+}
+
+model ItemExpiry {
+  id         String   @id @default(cuid())
+  itemId     String
+  batchNo    String
+  expiryDate DateTime
+  quantity   Float
+  location   String
+
+  item Item @relation(fields: [itemId], references: [id])
+
+  @@map("OITEXP")
+}
+
+model ExpiryAlert {
+  id          String   @id @default(cuid())
+  itemId      String
+  batchNumber String
+  expiryDate  DateTime
+  currentQty  Float
+  alertDays   Int // Days before expiry to alert
+  status      String   @default("ACTIVE") // "ACTIVE", "ACKNOWLEDGED", "DISPOSED"
+  createdAt   DateTime @default(now())
+
+  @@map("OEXPALERT")
+}
+
+// =================================================================
+// Food & Beverage Management
+// =================================================================
+model Recipe {
+  id           String @id @default(cuid())
+  menuItemId   String
+  name         String
+  instructions String
+  prepTime     Int // minutes
+  cookTime     Int // minutes
+  servingSize  Int
+
+  menuItem    Item               @relation("RecipeMenuItem", fields: [menuItemId], references: [id])
+  ingredients RecipeIngredient[]
+  costs       RecipeCost[]
+
+  @@map("ORECIPE")
+}
+
+model RecipeIngredient {
+  id       String @id @default(cuid())
+  recipeId String
+  itemId   String
+  quantity Float
+  unit     String
+
+  recipe Recipe @relation(fields: [recipeId], references: [id])
+  item   Item   @relation(fields: [itemId], references: [id])
+
+  @@map("ORECIPE1")
+}
+
+model RecipeCost {
+  id             String   @id @default(cuid())
+  recipeId       String
+  totalCost      Float
+  costPerServing Float
+  lastUpdated    DateTime @default(now())
+
+  recipe Recipe @relation(fields: [recipeId], references: [id])
+
+  @@map("ORCST")
+}
+
+model NutritionalInfo {
+  id         String   @id @default(cuid())
+  menuItemId String   @unique
+  calories   Float
+  protein    Float
+  carbs      Float
+  fat        Float
+  allergens  String[]
+
+  @@map("ONUTRI")
+}
+
+// =================================================================
+// Purchasing, Logistics & Approval Workflow
+// =================================================================
+
+enum DocStatus {
+  O
+  C
+  L
+  P
+  A
+  R
+}
+
+// Open, Closed, Cancelled, Pending, Approved, Rejected
+
+model PurchaseRequest {
+  id             Int       @id @default(autoincrement())
+  docNum         Int       @unique
+  docStatus      DocStatus @default(P)
+  docDate        DateTime  @default(now())
+  requiredDate   DateTime
+  comments       String?
+  businessUnitId String
+  requesterId    String
+  supplierId     String?
+
+  businessUnit     BusinessUnit          @relation(fields: [businessUnitId], references: [id])
+  requester        Employee              @relation(fields: [requesterId], references: [id])
+  supplier         BusinessPartner?      @relation(fields: [supplierId], references: [id])
+  lines            PurchaseRequestLine[]
+  approvalRequests ApprovalRequest[]
+  purchaseOrders   PurchaseOrder[]
+
+  @@map("OPRQ")
+}
+
+model PurchaseRequestLine {
+  id                Int    @id @default(autoincrement())
+  purchaseRequestId Int
+  itemCode          String
+  description       String
   quantity          Float
 
-  billOfMaterials BillOfMaterials @relation(fields: [billOfMaterialsId], references: [id])
-  childItem       Item            @relation(fields: [childItemId], references: [id])
-
-  @@map("ITT1")
-}
-
-model ProductionOrder {
-  // Corresponds to OWOR table
-  id           Int      @id @default(autoincrement())
-  docNum       Int      @unique
-  status       String   @default("P") // P-Planned, R-Released, C-Closed, L-Cancelled
-  type         String   @default("S") // S-Standard, P-Special, D-Disassembly
-  plannedQty   Float
-  completedQty Float    @default(0)
-  rejectedQty  Float    @default(0)
-  postingDate  DateTime
-  dueDate      DateTime
-
-  itemId String
-  item   Item                  @relation(fields: [itemId], references: [itemCode])
-  lines  ProductionOrderLine[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("OWOR")
-}
-
-model ProductionOrderLine {
-  // Corresponds to WOR1 table
-  id                Int    @id @default(autoincrement())
-  productionOrderId Int
-  lineNumber        Int
-  itemCode          String
-  baseQty           Float
-  plannedQty        Float
-  issuedQty         Float
-
-  productionOrder ProductionOrder @relation(fields: [productionOrderId], references: [id])
+  purchaseRequest PurchaseRequest @relation(fields: [purchaseRequestId], references: [id])
   item            Item            @relation(fields: [itemCode], references: [itemCode])
 
-  @@map("WOR1")
-}
-
-// =================================================================
-// Sales & Purchasing Modules (Documents)
-// =================================================================
-
-// --- Enums for document status ---
-enum DocStatus {
-  O // Open
-  C // Closed
-  L // Cancelled
-}
-
-model SalesOrder {
-  // Corresponds to ORDR table in SAP B1
-  id         Int       @id @default(autoincrement())
-  docNum     Int       @unique
-  docStatus  DocStatus @default(O)
-  docDate    DateTime
-  docDueDate DateTime
-  taxDate    DateTime
-  docTotal   Float
-  comments   String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  businessPartnerId String
-  businessPartner   BusinessPartner  @relation(fields: [businessPartnerId], references: [id])
-  lines             SalesOrderLine[]
-
-  @@map("ORDR")
-}
-
-model SalesOrderLine {
-  // Corresponds to RDR1 table in SAP B1
-  id           Int    @id @default(autoincrement())
-  salesOrderId Int
-  lineNum      Int
-  itemCode     String
-  description  String
-  quantity     Float
-  openQty      Float
-  price        Float
-  lineTotal    Float
-
-  salesOrder SalesOrder @relation(fields: [salesOrderId], references: [id])
-  item       Item       @relation(fields: [itemCode], references: [itemCode])
-
-  @@map("RDR1")
-}
-
-model ARInvoice {
-  // Corresponds to OINV table in SAP B1
-  id         Int       @id @default(autoincrement())
-  docNum     Int       @unique
-  docStatus  DocStatus @default(O)
-  docDate    DateTime
-  docDueDate DateTime
-  taxDate    DateTime
-  docTotal   Float
-  comments   String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  businessPartnerId String
-  businessPartner   BusinessPartner @relation(fields: [businessPartnerId], references: [id])
-  lines             ARInvoiceLine[]
-
-  baseDocType String? // e.g. 'SalesOrder'
-  baseDocNum  Int?
-
-  @@map("OINV")
-}
-
-model ARInvoiceLine {
-  // Corresponds to INV1 table in SAP B1
-  id          Int    @id @default(autoincrement())
-  arInvoiceId Int
-  lineNum     Int
-  itemCode    String
-  description String
-  quantity    Float
-  price       Float
-  lineTotal   Float
-
-  baseDocType String?
-  baseDocNum  Int?
-  baseLineNum Int?
-
-  arInvoice ARInvoice @relation(fields: [arInvoiceId], references: [id])
-  item      Item      @relation(fields: [itemCode], references: [itemCode])
-
-  @@map("INV1")
+  @@map("PRQ1")
 }
 
 model PurchaseOrder {
-  // Corresponds to OPOR table in SAP B1
-  id         Int       @id @default(autoincrement())
-  docNum     Int       @unique
-  docStatus  DocStatus @default(O)
-  docDate    DateTime
-  docDueDate DateTime
-  taxDate    DateTime
-  docTotal   Float
-  comments   String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id             Int       @id @default(autoincrement())
+  docNum         Int       @unique
+  docStatus      DocStatus @default(O)
+  docDate        DateTime
+  docDueDate     DateTime
+  docTotal       Float
+  businessUnitId String
+  supplierId     String
+  baseRequestId  Int?      @unique
 
-  businessPartnerId String
-  businessPartner   BusinessPartner     @relation(fields: [businessPartnerId], references: [id])
-  lines             PurchaseOrderLine[]
+  businessUnit    BusinessUnit        @relation(fields: [businessUnitId], references: [id])
+  supplier        BusinessPartner     @relation(fields: [supplierId], references: [id])
+  baseRequest     PurchaseRequest?    @relation(fields: [baseRequestId], references: [docNum])
+  lines           PurchaseOrderLine[]
+  goodsReceiptPOs GoodsReceiptPO[]
 
   @@map("OPOR")
 }
 
 model PurchaseOrderLine {
-  // Corresponds to POR1 table in SAP B1
   id              Int    @id @default(autoincrement())
   purchaseOrderId Int
-  lineNum         Int
   itemCode        String
   description     String
   quantity        Float
-  openQty         Float
   price           Float
   lineTotal       Float
 
-  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
-  item          Item          @relation(fields: [itemCode], references: [itemCode])
+  purchaseOrder       PurchaseOrder        @relation(fields: [purchaseOrderId], references: [id])
+  item                Item                 @relation(fields: [itemCode], references: [itemCode])
+  goodsReceiptPOLines GoodsReceiptPOLine[]
 
   @@map("POR1")
 }
 
-model APInvoice {
-  // Corresponds to OPCH table in SAP B1
-  id         Int       @id @default(autoincrement())
-  docNum     Int       @unique
-  docStatus  DocStatus @default(O)
-  docDate    DateTime
-  docDueDate DateTime
-  taxDate    DateTime
-  docTotal   Float
-  comments   String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+model GoodsReceiptPO {
+  id             Int      @id @default(autoincrement())
+  docNum         Int      @unique
+  docDate        DateTime
+  businessUnitId String
+  supplierId     String
+  baseOrderId    Int
 
-  businessPartnerId String
-  businessPartner   BusinessPartner @relation(fields: [businessPartnerId], references: [id])
-  lines             APInvoiceLine[]
+  businessUnit BusinessUnit         @relation(fields: [businessUnitId], references: [id])
+  supplier     BusinessPartner      @relation(fields: [supplierId], references: [id])
+  baseOrder    PurchaseOrder        @relation(fields: [baseOrderId], references: [docNum])
+  lines        GoodsReceiptPOLine[]
+  landedCosts  LandedCost[]
 
-  baseDocType String?
-  baseDocNum  Int?
-
-  @@map("OPCH")
+  @@map("OPDN")
 }
 
-model APInvoiceLine {
-  // Corresponds to PCH1 table in SAP B1
-  id          Int    @id @default(autoincrement())
-  apInvoiceId Int
-  lineNum     Int
+model GoodsReceiptPOLine {
+  id               Int    @id @default(autoincrement())
+  goodsReceiptPOId Int
+  itemCode         String
+  quantity         Float
+  baseOrderLineId  Int
+
+  goodsReceiptPO GoodsReceiptPO    @relation(fields: [goodsReceiptPOId], references: [id])
+  item           Item              @relation(fields: [itemCode], references: [itemCode])
+  baseOrderLine  PurchaseOrderLine @relation(fields: [baseOrderLineId], references: [id])
+
+  @@map("PDN1")
+}
+
+model PurchaseReturn {
+  id             Int      @id @default(autoincrement())
+  docNum         Int      @unique
+  docDate        DateTime
+  businessUnitId String
+  supplierId     String
+
+  businessUnit BusinessUnit         @relation(fields: [businessUnitId], references: [id])
+  supplier     BusinessPartner      @relation(fields: [supplierId], references: [id])
+  lines        PurchaseReturnLine[]
+
+  @@map("ORTN")
+}
+
+model PurchaseReturnLine {
+  id               Int    @id @default(autoincrement())
+  purchaseReturnId Int
+  itemCode         String
+  quantity         Float
+
+  purchaseReturn PurchaseReturn @relation(fields: [purchaseReturnId], references: [id])
+  item           Item           @relation(fields: [itemCode], references: [itemCode])
+
+  @@map("RTN1")
+}
+
+model LandedCost {
+  id             Int    @id @default(autoincrement())
+  docNum         Int    @unique
+  baseDocumentId Int
+  businessUnitId String
+
+  baseDocument GoodsReceiptPO   @relation(fields: [baseDocumentId], references: [docNum])
+  businessUnit BusinessUnit     @relation(fields: [businessUnitId], references: [id])
+  lines        LandedCostLine[]
+
+  @@map("OIPF")
+}
+
+model LandedCostLine {
+  id           Int    @id @default(autoincrement())
+  landedCostId Int
+  costType     String // Freight, Insurance, Duties
+  amount       Float
+
+  landedCost LandedCost @relation(fields: [landedCostId], references: [id])
+
+  @@map("IPF1")
+}
+
+model VendorPriceList {
+  id       String @id @default(cuid())
+  vendorId String
+  itemId   String
+  price    Float
+
+  vendor BusinessPartner @relation(fields: [vendorId], references: [id])
+  item   Item            @relation(fields: [itemId], references: [id])
+
+  @@map("OSPP")
+}
+
+model ApprovalTemplate {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+  isActive    Boolean @default(true)
+
+  stages ApprovalStage[]
+
+  @@map("OAPT")
+}
+
+model ApprovalStage {
+  id                 String @id @default(cuid())
+  name               String
+  level              Int // Order of the stage
+  approvalTemplateId String
+
+  template         ApprovalTemplate  @relation(fields: [approvalTemplateId], references: [id])
+  approvers        User[]            @relation("StageApprovers")
+  approvalRequests ApprovalRequest[]
+
+  @@map("APL1")
+}
+
+model ApprovalRequest {
+  id             String    @id @default(cuid())
+  documentType   String // e.g., "PurchaseRequest"
+  documentId     Int
+  currentStageId String
+  status         DocStatus @default(P) // Pending, Approved, Rejected
+  remarks        String?
+  createdAt      DateTime  @default(now())
+  approverId     String
+
+  document PurchaseRequest @relation(fields: [documentId], references: [docNum])
+  stage    ApprovalStage   @relation(fields: [currentStageId], references: [id])
+  approver User            @relation(fields: [approverId], references: [id])
+
+  @@map("OAPL")
+}
+
+// =================================================================
+// Hotel Management Module
+// =================================================================
+
+model HotelRoomType {
+  id          String  @id @default(cuid())
+  name        String  @unique // e.g., "Deluxe King", "Standard Twin"
+  description String?
+  baseRate    Float
+  itemMapId   String  @unique // Links to a service item in OITM
+
+  item             Item              @relation(fields: [itemMapId], references: [id])
+  rooms            HotelRoom[]
+  ratePlans        RatePlan[]
+  roomInventories  RoomInventory[]
+  roomBlocks       RoomBlock[]
+  packageDeals     PackageDeal[]
+  overbookingRules OverbookingRule[]
+
+  @@map("OHRT")
+}
+
+model HotelRoom {
+  id                 String @id @default(cuid())
+  roomNumber         String
+  status             String @default("Available") // Available, Occupied, OutOfOrder
+  housekeepingStatus String @default("Clean") // Clean, Dirty, Inspect
+  businessUnitId     String
+  roomTypeId         String
+
+  businessUnit        BusinessUnit         @relation(fields: [businessUnitId], references: [id])
+  roomType            HotelRoomType        @relation(fields: [roomTypeId], references: [id])
+  bookings            HotelBooking[]
+  housekeepingLogs    HousekeepingLog[]
+  housekeepingTasks   HousekeepingTask[]
+  maintenanceRequests MaintenanceRequest[]
+
+  @@unique([roomNumber, businessUnitId])
+  @@map("OHRM")
+}
+
+model RatePlan {
+  id         String   @id @default(cuid())
+  name       String // e.g., "Peak Season", "Weekday Promo"
+  roomTypeId String
+  startDate  DateTime
+  endDate    DateTime
+  rate       Float
+
+  roomType       HotelRoomType     @relation(fields: [roomTypeId], references: [id])
+  bookings       HotelBooking[]
+  restrictions   RateRestriction[]
+  noShowPolicies NoShowPolicy[]
+
+  @@map("ORPL")
+}
+
+model HotelBooking {
+  id             String   @id @default(cuid())
+  bookingCode    String   @unique
+  guestId        String
+  roomId         String
+  ratePlanId     String
+  checkInDate    DateTime
+  checkOutDate   DateTime
+  status         String   @default("Confirmed") // Confirmed, CheckedIn, CheckedOut, Cancelled, NoShow
+  groupBookingId String?
+
+  guest         BusinessPartner       @relation(fields: [guestId], references: [id])
+  room          HotelRoom             @relation(fields: [roomId], references: [id])
+  ratePlan      RatePlan              @relation(fields: [ratePlanId], references: [id])
+  groupBooking  GroupBooking?         @relation("GroupReservations", fields: [groupBookingId], references: [id])
+  folio         Folio?
+  modifications BookingModification[]
+
+  @@map("OHBK")
+}
+
+model Folio {
+  id          String @id @default(cuid())
+  bookingId   String @unique
+  totalDebit  Float  @default(0)
+  totalCredit Float  @default(0)
+  balance     Float  @default(0)
+
+  booking      HotelBooking       @relation(fields: [bookingId], references: [id])
+  transactions FolioTransaction[]
+  payments     FolioPayment[]
+
+  @@map("OFOL")
+}
+
+model FolioTransaction {
+  id          String   @id @default(cuid())
+  folioId     String
+  description String
+  amount      Float
+  type        String   @default("DEBIT") // DEBIT or CREDIT
+  taxCodeId   String?
+  taxAmount   Float    @default(0)
+  createdAt   DateTime @default(now())
+
+  folio   Folio    @relation(fields: [folioId], references: [id])
+  taxCode TaxCode? @relation(fields: [taxCodeId], references: [id])
+
+  @@map("FOL1")
+}
+
+model FolioPayment {
+  id              Int      @id @default(autoincrement())
+  folioId         String
+  paymentMethodId String
+  amount          Float
+  createdAt       DateTime @default(now())
+
+  folio         Folio         @relation(fields: [folioId], references: [id])
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+
+  @@map("OFP1")
+}
+
+model HousekeepingLog {
+  id         String   @id @default(cuid())
+  roomId     String
+  employeeId String
+  statusFrom String
+  statusTo   String
+  remarks    String?
+  timestamp  DateTime @default(now())
+
+  room     HotelRoom @relation(fields: [roomId], references: [id])
+  employee Employee  @relation(fields: [employeeId], references: [id])
+
+  @@map("OHKL")
+}
+
+// =================================================================
+// Hotel Management Enhancements
+// =================================================================
+
+model RoomInventory {
+  id              String   @id @default(cuid())
+  roomTypeId      String
+  businessUnitId  String
+  date            DateTime
+  totalRooms      Int
+  availableRooms  Int
+  blockedRooms    Int
+  outOfOrderRooms Int
+
+  roomType     HotelRoomType @relation(fields: [roomTypeId], references: [id])
+  businessUnit BusinessUnit  @relation(fields: [businessUnitId], references: [id])
+
+  @@unique([roomTypeId, businessUnitId, date])
+  @@map("ORINV")
+}
+
+model RoomBlock {
+  id            String   @id @default(cuid())
+  blockName     String
+  roomTypeId    String
+  startDate     DateTime
+  endDate       DateTime
+  blockedRooms  Int
+  releasedRooms Int      @default(0)
+  blockType     String // "GROUP", "MAINTENANCE", "CORPORATE"
+  contactId     String?
+
+  roomType HotelRoomType @relation(fields: [roomTypeId], references: [id])
+
+  @@map("ORBLK")
+}
+
+model RateRestriction {
+  id                String   @id @default(cuid())
+  ratePlanId        String
+  date              DateTime
+  minStay           Int?
+  maxStay           Int?
+  closedToArrival   Boolean  @default(false)
+  closedToDeparture Boolean  @default(false)
+  stopSell          Boolean  @default(false)
+
+  ratePlan RatePlan @relation(fields: [ratePlanId], references: [id])
+
+  @@unique([ratePlanId, date])
+  @@map("ORRES")
+}
+
+model PackageDeal {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  roomTypeId  String
+  baseRate    Float
+  inclusions  String[] // ["BREAKFAST", "WIFI", "PARKING"]
+  validFrom   DateTime
+  validTo     DateTime
+
+  roomType HotelRoomType @relation(fields: [roomTypeId], references: [id])
+
+  @@map("OPKG")
+}
+
+model GroupBooking {
+  id            String    @id @default(cuid())
+  groupName     String
+  contactId     String
+  eventDate     DateTime?
+  totalRooms    Int
+  blockedRooms  Int
+  pickedUpRooms Int       @default(0)
+  groupRate     Float
+  cutOffDate    DateTime
+
+  contact      BusinessPartner @relation(fields: [contactId], references: [id])
+  reservations HotelBooking[]  @relation("GroupReservations")
+
+  @@map("OGRP")
+}
+
+model BookingModification {
+  id               String   @id @default(cuid())
+  bookingId        String
+  modificationType String // "ROOM_CHANGE", "DATE_CHANGE", "RATE_CHANGE", "CANCELLATION"
+  oldValue         String?
+  newValue         String?
+  reason           String?
+  modifiedBy       String
+  modifiedAt       DateTime @default(now())
+
+  booking HotelBooking @relation(fields: [bookingId], references: [id])
+
+  @@map("OBMOD")
+}
+
+model NoShowPolicy {
+  id            String @id @default(cuid())
+  ratePlanId    String
+  cutOffTime    String // "18:00"
+  penaltyType   String // "FIRST_NIGHT", "PERCENTAGE", "FIXED_AMOUNT"
+  penaltyAmount Float
+
+  ratePlan RatePlan @relation(fields: [ratePlanId], references: [id])
+
+  @@map("ONOSH")
+}
+
+model OverbookingRule {
+  id             String  @id @default(cuid())
+  roomTypeId     String
+  maxOverbookPct Float // Maximum overbooking percentage
+  walkCost       Float // Cost to walk a guest
+  isActive       Boolean @default(true)
+
+  roomType HotelRoomType @relation(fields: [roomTypeId], references: [id])
+
+  @@map("OOVER")
+}
+
+model WalkInGuest {
+  id                String   @id @default(cuid())
+  guestId           String
+  originalBookingId String?
+  walkReason        String // "OVERBOOKED", "ROOM_ISSUE", "UPGRADE"
+  compensation      Float?
+  alternateHotel    String?
+  createdAt         DateTime @default(now())
+
+  guest BusinessPartner @relation(fields: [guestId], references: [id])
+
+  @@map("OWALK")
+}
+
+model PricingRule {
+  id           String   @id @default(cuid())
+  roomTypeId   String
+  seasonType   String // "PEAK", "OFF_PEAK", "HOLIDAY"
+  dayOfWeek    String[]
+  occupancyMin Float // Minimum occupancy to trigger
+  priceAdjust  Float // Percentage adjustment
+  startDate    DateTime
+  endDate      DateTime
+  isActive     Boolean  @default(true)
+
+  @@map("OPRICE")
+}
+
+model OccupancyForecast {
+  id          String   @id @default(cuid())
+  date        DateTime
+  roomTypeId  String
+  forecasted  Int
+  actual      Int?
+  averageRate Float
+
+  @@unique([date, roomTypeId])
+  @@map("OOCCUP")
+}
+
+// =================================================================
+// Housekeeping Enhancements
+// =================================================================
+
+model HousekeepingTask {
+  id            String    @id @default(cuid())
+  roomId        String
+  taskType      String // "CLEANING", "MAINTENANCE", "INSPECTION"
+  priority      String // "LOW", "MEDIUM", "HIGH", "URGENT"
+  estimatedTime Int // minutes
+  actualTime    Int?
+  status        String    @default("PENDING") // "PENDING", "IN_PROGRESS", "COMPLETED"
+  assignedToId  String
+  createdAt     DateTime  @default(now())
+  completedAt   DateTime?
+
+  room       HotelRoom               @relation(fields: [roomId], references: [id])
+  assignedTo Employee                @relation(fields: [assignedToId], references: [id])
+  checklist  HousekeepingChecklist[]
+
+  @@map("OHKTASK")
+}
+
+model HousekeepingChecklist {
+  id          String  @id @default(cuid())
+  taskId      String
+  item        String // "Clean bathroom", "Check minibar"
+  isCompleted Boolean @default(false)
+  notes       String?
+
+  task HousekeepingTask @relation(fields: [taskId], references: [id])
+
+  @@map("OHKCHECK")
+}
+
+// =================================================================
+// Event & Banquet Management
+// =================================================================
+
+model Event {
+  id          String   @id @default(cuid())
+  eventName   String
+  eventType   String // "WEDDING", "CONFERENCE", "BIRTHDAY", "CORPORATE"
+  guestId     String
+  eventDate   DateTime
+  guestCount  Int
+  totalAmount Float
+  status      String   @default("CONFIRMED") // "INQUIRY", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"
+
+  rooms    EventRoom[]
+  services EventService[]
+
+  @@map("OEVENT")
+}
+
+model EventRoom {
+  id       String @id @default(cuid())
+  eventId  String
+  roomId   String
+  setup    String // "THEATER", "CLASSROOM", "U_SHAPE", "BANQUET"
+  capacity Int
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@map("OEVENT1")
+}
+
+model EventService {
+  id          String @id @default(cuid())
+  eventId     String
+  serviceName String
+  quantity    Int
+  unitPrice   Float
+  totalPrice  Float
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@map("OEVENT2")
+}
+
+// =================================================================
+// Point of Sale (POS) Module
+// =================================================================
+
+model Menu {
+  id             String @id @default(cuid())
+  name           String // e.g. "Lobby Cafe Menu", "Rooftop Bar Menu"
+  businessUnitId String
+
+  businessUnit BusinessUnit   @relation(fields: [businessUnitId], references: [id])
+  categories   MenuCategory[]
+
+  @@map("OMNU")
+}
+
+model MenuCategory {
+  id     String @id @default(cuid())
+  name   String // e.g. "Appetizers", "Main Courses", "Desserts"
+  menuId String
+
+  menu      Menu       @relation(fields: [menuId], references: [id])
+  menuItems MenuItem[]
+
+  @@map("OMC1")
+}
+
+model MenuItem {
+  menuCategoryId String
+  itemId         String
+
+  menuCategory MenuCategory @relation(fields: [menuCategoryId], references: [id])
+  item         Item         @relation(fields: [itemId], references: [id])
+
+  @@id([menuCategoryId, itemId])
+  @@map("MNU1")
+}
+
+model POSTerminal {
+  id             String @id @default(cuid())
+  name           String
+  businessUnitId String
+
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id])
+  posOrders    POSOrder[]
+  shifts       POSShift[]
+  cashDrawers  CashDrawer[]
+
+  @@map("OPOS")
+}
+
+model POSShift {
+  id          String    @id @default(cuid())
+  startAmount Float
+  endAmount   Float?
+  startTime   DateTime  @default(now())
+  endTime     DateTime?
+  status      String    @default("Open") // Open, Closed
+  userId      String
+  terminalId  String
+
+  user      User        @relation(fields: [userId], references: [id])
+  terminal  POSTerminal @relation(fields: [terminalId], references: [id])
+  posOrders POSOrder[]
+
+  @@map("OSFT")
+}
+
+model RestaurantTable {
+  id             String @id @default(cuid())
+  tableNumber    String
+  status         String @default("Available") // Available, Occupied, Reserved
+  businessUnitId String
+
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id])
+  posOrders    POSOrder[]
+
+  @@map("ORTB")
+}
+
+model Discount {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  type     String // PERCENTAGE, FIXED_AMOUNT
+  value    Float
+  isActive Boolean @default(true)
+
+  posOrders     POSOrder[]
+  posOrderLines POSOrderLine[]
+
+  @@map("ODSC")
+}
+
+model POSOrder {
+  id             Int      @id @default(autoincrement())
+  docNum         Int      @unique
+  docDate        DateTime @default(now())
+  totalBeforeTax Float
+  docTotal       Float
+  taxAmount      Float
+  orderType      String // Dine-In, Take-Out, Delivery
+  businessUnitId String
+  terminalId     String
+  shiftId        String
+  tableId        String?
+  customerId     String?
+  discountId     String?
+
+  businessUnit   BusinessUnit         @relation(fields: [businessUnitId], references: [id])
+  terminal       POSTerminal          @relation(fields: [terminalId], references: [id])
+  shift          POSShift             @relation(fields: [shiftId], references: [id])
+  table          RestaurantTable?     @relation(fields: [tableId], references: [id])
+  customer       BusinessPartner?     @relation(fields: [customerId], references: [id])
+  discount       Discount?            @relation(fields: [discountId], references: [id])
+  lines          POSOrderLine[]
+  payments       POSPayment[]
+  returns        POSReturn[]
+  kots           KitchenOrderTicket[]
+  splits         POSOrderSplit[]
+  serviceCharges ServiceCharge[]
+  voids          POSVoid[]
+
+  @@map("OPDI")
+}
+
+model POSOrderLine {
+  id          Int     @id @default(autoincrement())
+  posOrderId  Int
   itemCode    String
   description String
   quantity    Float
   price       Float
   lineTotal   Float
+  discountId  String?
+  taxCodeId   String?
+  taxAmount   Float   @default(0)
 
-  baseDocType String?
-  baseDocNum  Int?
-  baseLineNum Int?
+  posOrder  POSOrder           @relation(fields: [posOrderId], references: [id])
+  item      Item               @relation(fields: [itemCode], references: [itemCode])
+  discount  Discount?          @relation(fields: [discountId], references: [id])
+  taxCode   TaxCode?           @relation(fields: [taxCodeId], references: [id])
+  returns   POSReturnLine[]
+  modifiers POSOrderModifier[]
+
+  @@map("PDI1")
+}
+
+// =================================================================
+// POS Enhancements
+// =================================================================
+
+model POSOrderModifier {
+  id             String @id @default(cuid())
+  posOrderLineId Int
+  modifierName   String // "Extra Cheese", "No Onions", "Medium Rare"
+  price          Float  @default(0)
+
+  posOrderLine POSOrderLine @relation(fields: [posOrderLineId], references: [id])
+
+  @@map("PDI2")
+}
+
+model POSOrderSplit {
+  id         String @id @default(cuid())
+  posOrderId Int
+  splitType  String // "EQUAL", "BY_ITEM", "BY_AMOUNT"
+  guestCount Int
+
+  posOrder POSOrder          @relation(fields: [posOrderId], references: [id])
+  payments POSSplitPayment[]
+
+  @@map("OSPL")
+}
+
+model POSSplitPayment {
+  id              String @id @default(cuid())
+  splitId         String
+  paymentMethodId String
+  amount          Float
+  guestNumber     Int
+
+  split         POSOrderSplit @relation(fields: [splitId], references: [id])
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+
+  @@map("OSPL1")
+}
+
+model POSVoid {
+  id          String   @id @default(cuid())
+  posOrderId  Int
+  lineId      Int?
+  reason      String
+  voidedBy    String
+  voidedAt    DateTime @default(now())
+  managerAuth String? // Manager authorization for voids
+  amount      Float
+
+  posOrder POSOrder @relation(fields: [posOrderId], references: [id])
+
+  @@map("OVOI")
+}
+
+model ServiceCharge {
+  id          String  @id @default(cuid())
+  posOrderId  Int
+  type        String // "SERVICE_CHARGE", "GRATUITY", "DELIVERY_FEE"
+  rate        Float // Percentage or fixed amount
+  amount      Float
+  isAutomatic Boolean @default(false)
+
+  posOrder POSOrder @relation(fields: [posOrderId], references: [id])
+
+  @@map("OSVC")
+}
+
+model CashDrawer {
+  id            String    @id @default(cuid())
+  terminalId    String
+  openAmount    Float
+  currentAmount Float
+  lastCounted   DateTime?
+
+  terminal     POSTerminal       @relation(fields: [terminalId], references: [id])
+  transactions CashTransaction[]
+
+  @@map("OCDR")
+}
+
+model CashTransaction {
+  id           String   @id @default(cuid())
+  cashDrawerId String
+  type         String // "SALE", "REFUND", "PAYOUT", "DROP"
+  amount       Float
+  reason       String?
+  userId       String
+  createdAt    DateTime @default(now())
+
+  cashDrawer CashDrawer @relation(fields: [cashDrawerId], references: [id])
+
+  @@map("OCTR")
+}
+
+model POSReturn {
+  id             Int      @id @default(autoincrement())
+  docNum         Int      @unique
+  docDate        DateTime
+  businessUnitId String
+  baseOrderId    Int
+
+  businessUnit BusinessUnit    @relation(fields: [businessUnitId], references: [id])
+  baseOrder    POSOrder        @relation(fields: [baseOrderId], references: [docNum])
+  lines        POSReturnLine[]
+
+  @@map("OPSR")
+}
+
+model POSReturnLine {
+  id              Int    @id @default(autoincrement())
+  posReturnId     Int
+  itemCode        String
+  quantity        Float
+  baseOrderLineId Int
+
+  posReturn     POSReturn    @relation(fields: [posReturnId], references: [id])
+  item          Item         @relation(fields: [itemCode], references: [id])
+  baseOrderLine POSOrderLine @relation(fields: [baseOrderLineId], references: [id])
+
+  @@map("PSR1")
+}
+
+model KitchenOrderTicket {
+  id         Int      @id @default(autoincrement())
+  posOrderId Int
+  status     String   @default("Pending") // Pending, InProgress, Ready
+  createdAt  DateTime @default(now())
+
+  posOrder POSOrder @relation(fields: [posOrderId], references: [id])
+
+  @@map("OKOT")
+}
+
+model PaymentMethod {
+  id   String @id @default(cuid())
+  name String @unique // Cash, Credit Card, Room Charge, Gift Card
+
+  posPayments   POSPayment[]
+  folioPayments FolioPayment[]
+  splitPayments POSSplitPayment[]
+
+  @@map("OPMT")
+}
+
+model POSPayment {
+  id              Int    @id @default(autoincrement())
+  posOrderId      Int
+  paymentMethodId String
+  amount          Float
+
+  posOrder      POSOrder      @relation(fields: [posOrderId], references: [id])
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+
+  @@map("ORCT")
+}
+
+// =================================================================
+// Standard Document Models (Sales, AR/AP Invoices)
+// =================================================================
+
+model SalesOrder {
+  id             Int       @id @default(autoincrement())
+  docNum         Int       @unique
+  docStatus      DocStatus @default(O)
+  docDate        DateTime
+  docDueDate     DateTime
+  docTotal       Float
+  businessUnitId String
+  customerId     String
+
+  businessUnit BusinessUnit     @relation(fields: [businessUnitId], references: [id])
+  customer     BusinessPartner  @relation(fields: [customerId], references: [id])
+  lines        SalesOrderLine[]
+  deliveries   Delivery[]
+
+  @@map("ORDR")
+}
+
+model SalesOrderLine {
+  id           Int    @id @default(autoincrement())
+  salesOrderId Int
+  itemCode     String
+  description  String
+  quantity     Float
+  price        Float
+  lineTotal    Float
+
+  salesOrder    SalesOrder     @relation(fields: [salesOrderId], references: [id])
+  item          Item           @relation(fields: [itemCode], references: [id])
+  deliveryLines DeliveryLine[]
+
+  @@map("RDR1")
+}
+
+model Delivery {
+  id             Int      @id @default(autoincrement())
+  docNum         Int      @unique
+  docDate        DateTime
+  businessUnitId String
+  customerId     String
+  baseOrderId    Int
+
+  businessUnit BusinessUnit    @relation(fields: [businessUnitId], references: [id])
+  customer     BusinessPartner @relation(fields: [customerId], references: [id])
+  baseOrder    SalesOrder      @relation(fields: [baseOrderId], references: [docNum])
+  lines        DeliveryLine[]
+
+  @@map("ODLN")
+}
+
+model DeliveryLine {
+  id              Int    @id @default(autoincrement())
+  deliveryId      Int
+  itemCode        String
+  quantity        Float
+  baseOrderLineId Int
+
+  delivery      Delivery       @relation(fields: [deliveryId], references: [id])
+  item          Item           @relation(fields: [itemCode], references: [id])
+  baseOrderLine SalesOrderLine @relation(fields: [baseOrderLineId], references: [id])
+
+  @@map("DLN1")
+}
+
+model ARInvoice {
+  id             Int       @id @default(autoincrement())
+  docNum         Int       @unique
+  docStatus      DocStatus @default(O)
+  docDate        DateTime
+  totalBeforeTax Float
+  docTotal       Float
+  taxAmount      Float
+  businessUnitId String
+  customerId     String
+
+  businessUnit BusinessUnit    @relation(fields: [businessUnitId], references: [id])
+  customer     BusinessPartner @relation(fields: [customerId], references: [id])
+  lines        ARInvoiceLine[]
+
+  @@map("OINV")
+}
+
+model ARInvoiceLine {
+  id          Int     @id @default(autoincrement())
+  arInvoiceId Int
+  itemCode    String
+  description String
+  quantity    Float
+  price       Float
+  lineTotal   Float
+  taxCodeId   String?
+  taxAmount   Float   @default(0)
+
+  arInvoice ARInvoice @relation(fields: [arInvoiceId], references: [id])
+  item      Item      @relation(fields: [itemCode], references: [id])
+  taxCode   TaxCode?  @relation(fields: [taxCodeId], references: [id])
+
+  @@map("INV1")
+}
+
+model APInvoice {
+  id             Int       @id @default(autoincrement())
+  docNum         Int       @unique
+  docStatus      DocStatus @default(O)
+  docDate        DateTime
+  totalBeforeTax Float
+  docTotal       Float
+  taxAmount      Float
+  businessUnitId String
+  supplierId     String
+
+  businessUnit BusinessUnit    @relation(fields: [businessUnitId], references: [id])
+  supplier     BusinessPartner @relation(fields: [supplierId], references: [id])
+  lines        APInvoiceLine[]
+
+  @@map("OPCH")
+}
+
+model APInvoiceLine {
+  id          Int     @id @default(autoincrement())
+  apInvoiceId Int
+  itemCode    String
+  description String
+  quantity    Float
+  price       Float
+  lineTotal   Float
+  taxCodeId   String?
+  taxAmount   Float   @default(0)
 
   apInvoice APInvoice @relation(fields: [apInvoiceId], references: [id])
-  item      Item      @relation(fields: [itemCode], references: [itemCode])
+  item      Item      @relation(fields: [itemCode], references: [id])
+  taxCode   TaxCode?  @relation(fields: [taxCodeId], references: [id])
 
   @@map("PCH1")
-}
-
-// =================================================================
-// Service Module (OINS, INS1, OSCL)
-// =================================================================
-
-model CustomerEquipmentCard {
-  // Corresponds to OINS table
-  id           String @id @default(cuid())
-  itemCode     String
-  itemName     String
-  serialNumber String @unique
-
-  customerId String
-  customer   BusinessPartner @relation(fields: [customerId], references: [id])
-
-  item Item @relation(fields: [itemCode], references: [itemCode])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  serviceCalls ServiceCall[]
-
-  @@map("OINS")
-}
-
-model ServiceContract {
-  // Corresponds to INS1 (conceptually)
-  id           String   @id @default(cuid())
-  contractName String
-  customerId   String
-  startDate    DateTime
-  endDate      DateTime
-  description  String?
-
-  customer BusinessPartner @relation(fields: [customerId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  serviceCalls ServiceCall[]
-
-  @@map("INS1")
-}
-
-model ServiceCall {
-  // Corresponds to OSCL table
-  id      Int    @id @default(autoincrement())
-  subject String
-
-  customerId   String
-  itemCode     String?
-  serialNumber String?
-
-  status   Int    @default(-3) // -3 Open, -2 Closed, -1 Pending
-  priority String @default("M") // L-Low, M-Medium, H-High
-
-  createdOn DateTime  @default(now())
-  closedOn  DateTime?
-
-  customer      BusinessPartner        @relation(fields: [customerId], references: [id])
-  equipmentCard CustomerEquipmentCard? @relation(fields: [serialNumber], references: [serialNumber])
-  contract      ServiceContract?       @relation(fields: [contractId], references: [id])
-  contractId    String?
-
-  @@map("OSCL")
 }

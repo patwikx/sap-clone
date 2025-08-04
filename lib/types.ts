@@ -381,6 +381,43 @@ export interface POSOrderFormData {
   }[]
 }
 
+
+
+export type POSShiftWithRelations = Prisma.POSShiftGetPayload<{
+  include: {
+    user: true
+    terminal: {
+      include: {
+        businessUnit: true
+      }
+    }
+    orders: {
+      include: {
+        lines: true
+        payments: {
+          include: {
+            paymentMethod: true
+          }
+        }
+      }
+    }
+  }
+}>
+
+export type POSTerminalWithRelations = Prisma.POSTerminalGetPayload<{
+  include: {
+    businessUnit: true
+    shifts: {
+      where: {
+        status: 'Open'
+      }
+      include: {
+        user: true
+      }
+    }
+  }
+}>
+
 export interface PurchaseRequestFormData {
   businessUnitId: string
   requesterId: string

@@ -45,6 +45,9 @@ model BusinessUnit {
   roomInventories     RoomInventory[]
   cashFlowForecasts   CashFlowForecast[]
   maintenanceRequests MaintenanceRequest[]
+  hotelBookings       HotelBooking[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime?            @updatedAt
 
   @@map("OBU") // Business Unit
 }
@@ -80,7 +83,9 @@ model AuditLog {
   action        String // CREATE, UPDATE, DELETE
   changedFields Json?
 
-  user User @relation(fields: [userId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
 
   @@map("ADO1_LOG")
 }
@@ -97,6 +102,8 @@ model Role {
 
   permissions RolePermission[]
   users       UserRole[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime?        @updatedAt
 
   @@map("OROLE")
 }
@@ -107,7 +114,9 @@ model Permission {
   action   String // "CREATE", "READ", "UPDATE", "DELETE", "APPROVE"
   resource String? // Specific resource within module
 
-  roles RolePermission[]
+  roles     RolePermission[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime?        @updatedAt
 
   @@unique([module, action, resource])
   @@map("OPERM")
@@ -119,6 +128,8 @@ model RolePermission {
 
   role       Role       @relation(fields: [roleId], references: [id])
   permission Permission @relation(fields: [permissionId], references: [id])
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime?  @updatedAt
 
   @@id([roleId, permissionId])
   @@map("OROLEPERM")
@@ -128,8 +139,10 @@ model UserRole {
   userId String
   roleId String
 
-  user User @relation(fields: [userId], references: [id])
-  role Role @relation(fields: [roleId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+  role      Role      @relation(fields: [roleId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
 
   @@id([userId, roleId])
   @@map("OUSERROLE")
@@ -148,6 +161,8 @@ model Currency {
 
   exchangeRatesFrom ExchangeRate[] @relation("FromCurrency")
   exchangeRatesTo   ExchangeRate[] @relation("ToCurrency")
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime?      @updatedAt
 
   @@map("OCUR")
 }
@@ -249,6 +264,8 @@ model BusinessPartnerAddress {
   businessPartnerId String
 
   businessPartner BusinessPartner @relation(fields: [businessPartnerId], references: [id])
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime?       @updatedAt
 
   @@map("CRD1")
 }
@@ -263,6 +280,8 @@ model Opportunity {
 
   businessPartner BusinessPartner @relation(fields: [cardCode], references: [cardCode])
   activities      Activity[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime?       @updatedAt
 
   @@map("OOPR")
 }
@@ -278,6 +297,8 @@ model Activity {
 
   businessPartner BusinessPartner @relation(fields: [cardCode], references: [cardCode])
   opportunity     Opportunity?    @relation(fields: [opportunityId], references: [id])
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime?       @updatedAt
 
   @@map("OACR")
 }
@@ -294,7 +315,8 @@ model GuestPreference {
   notes      String?
   createdAt  DateTime @default(now())
 
-  guest BusinessPartner @relation(fields: [guestId], references: [id])
+  guest     BusinessPartner @relation(fields: [guestId], references: [id])
+  updatedAt DateTime?       @updatedAt
 
   @@map("OGPREF")
 }
@@ -308,7 +330,9 @@ model GuestHistory {
   satisfaction Int? // 1-5 rating
   notes        String?
 
-  guest BusinessPartner @relation(fields: [guestId], references: [id])
+  guest     BusinessPartner @relation(fields: [guestId], references: [id])
+  createdAt DateTime        @default(now())
+  updatedAt DateTime?       @updatedAt
 
   @@map("OGHIST")
 }
@@ -338,8 +362,10 @@ model LoyaltyTier {
   discountPercent Float
   benefits        String[] // JSON array of benefits
 
-  program LoyaltyProgram @relation(fields: [programId], references: [id])
-  members GuestLoyalty[]
+  program   LoyaltyProgram @relation(fields: [programId], references: [id])
+  members   GuestLoyalty[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime?      @updatedAt
 
   @@map("OLTIER")
 }
@@ -358,6 +384,8 @@ model GuestLoyalty {
   program      LoyaltyProgram       @relation(fields: [programId], references: [id])
   tier         LoyaltyTier          @relation(fields: [tierId], references: [id])
   transactions LoyaltyTransaction[]
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime?            @updatedAt
 
   @@map("OLOYAL")
 }
@@ -371,7 +399,8 @@ model LoyaltyTransaction {
   referenceId String? // Reference to order/booking
   createdAt   DateTime @default(now())
 
-  loyalty GuestLoyalty @relation(fields: [loyaltyId], references: [id])
+  loyalty   GuestLoyalty @relation(fields: [loyaltyId], references: [id])
+  updatedAt DateTime?    @updatedAt
 
   @@map("OLTRANS")
 }
@@ -390,19 +419,21 @@ model Notification {
   isRead    Boolean   @default(false)
   createdAt DateTime  @default(now())
   readAt    DateTime?
-
-  user User @relation(fields: [userId], references: [id])
+  updatedAt DateTime? @updatedAt
+  user      User      @relation(fields: [userId], references: [id])
 
   @@map("ONOTIF")
 }
 
 model EmailTemplate {
-  id        String   @id @default(cuid())
-  name      String   @unique
+  id        String    @id @default(cuid())
+  name      String    @unique
   subject   String
   body      String // HTML template
   variables String[] // Placeholders like {guestName}, {bookingCode}
-  isActive  Boolean  @default(true)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
 
   @@map("OEMAIL")
 }
@@ -432,6 +463,8 @@ model MaintenanceRequest {
   assignedTo   Employee?         @relation("AssignedTo", fields: [assignedToId], references: [id])
   businessUnit BusinessUnit      @relation(fields: [businessUnitId], references: [id])
   tasks        MaintenanceTask[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime?         @updatedAt
 
   @@map("OMREQ")
 }
@@ -447,6 +480,8 @@ model MaintenanceTask {
   notes                String?
 
   maintenanceRequest MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id])
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime?          @updatedAt
 
   @@map("OMTASK")
 }
@@ -462,7 +497,9 @@ model PreventiveMaintenance {
   nextDue       DateTime
   isActive      Boolean   @default(true)
 
-  asset FixedAsset @relation(fields: [assetId], references: [id])
+  asset     FixedAsset @relation(fields: [assetId], references: [id])
+  createdAt DateTime   @default(now())
+  updatedAt DateTime?  @updatedAt
 
   @@map("OPREV")
 }
@@ -480,6 +517,8 @@ model FiscalYear {
 
   periods         FinancialPeriod[]
   budgetScenarios BudgetScenario[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime?         @updatedAt
 
   @@map("OFY")
 }
@@ -496,6 +535,8 @@ model FinancialPeriod {
   fiscalYear     FiscalYear     @relation(fields: [fiscalYearId], references: [id])
   journalEntries JournalEntry[]
   budgetAmounts  BudgetAmount[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime?      @updatedAt
 
   @@map("OFP")
 }
@@ -529,8 +570,9 @@ model JournalEntry {
   periodId  String
   createdAt DateTime @default(now())
 
-  period FinancialPeriod    @relation(fields: [periodId], references: [id])
-  lines  JournalEntryLine[]
+  period    FinancialPeriod    @relation(fields: [periodId], references: [id])
+  lines     JournalEntryLine[]
+  updatedAt DateTime?          @updatedAt
 
   @@map("OJDT")
 }
@@ -545,6 +587,8 @@ model JournalEntryLine {
 
   journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id])
   account      Account      @relation(fields: [accountId], references: [id])
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime?    @updatedAt
 
   @@map("JDT1")
 }
@@ -555,17 +599,21 @@ model TaxGroup {
   name     String
   isActive Boolean @default(true)
 
-  taxCodes TaxCode[]
+  taxCodes  TaxCode[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
 
   @@map("OVTG")
 }
 
 model TaxCode {
-  id         String @id @default(cuid())
-  code       String @unique
+  id         String    @id @default(cuid())
+  code       String    @unique
   name       String
   rate       Float // e.g., 12 for 12%
   taxGroupId String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime? @updatedAt
 
   taxGroup          TaxGroup           @relation(fields: [taxGroupId], references: [id])
   arInvoiceLines    ARInvoiceLine[]
@@ -585,6 +633,8 @@ model DocumentNumbering {
   businessUnitId String
 
   businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id])
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime?    @updatedAt
 
   @@unique([documentType, businessUnitId])
   @@map("NNM1")
@@ -596,18 +646,22 @@ model BudgetScenario {
   fiscalYearId String
 
   fiscalYear FiscalYear     @relation(fields: [fiscalYearId], references: [id])
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime?      @updatedAt
   amounts    BudgetAmount[]
 
   @@map("OBGS")
 }
 
 model BudgetAmount {
-  id             String @id @default(cuid())
+  id             String    @id @default(cuid())
   scenarioId     String
   periodId       String
   accountId      String
   businessUnitId String
   amount         Float
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime? @updatedAt
 
   scenario     BudgetScenario  @relation(fields: [scenarioId], references: [id])
   period       FinancialPeriod @relation(fields: [periodId], references: [id])
@@ -618,11 +672,13 @@ model BudgetAmount {
 }
 
 model FixedAssetClass {
-  id                             String @id @default(cuid())
-  name                           String @unique
+  id                             String    @id @default(cuid())
+  name                           String    @unique
   assetAccountCode               String
   accDepreciationAccountCode     String
   depreciationExpenseAccountCode String
+  createdAt                      DateTime  @default(now())
+  updatedAt                      DateTime? @updatedAt
 
   assetAccount               Account      @relation("AssetGLAccounts", fields: [assetAccountCode], references: [acctCode])
   accDepreciationAccount     Account      @relation("AccDepGLAccounts", fields: [accDepreciationAccountCode], references: [acctCode])
@@ -633,28 +689,30 @@ model FixedAssetClass {
 }
 
 model DepreciationType {
-  id     String @id @default(cuid())
-  name   String @unique // e.g., "Straight Line"
-  method String
-
-  assets FixedAsset[]
+  id        String       @id @default(cuid())
+  name      String       @unique // e.g., "Straight Line"
+  method    String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime?    @updatedAt
+  assets    FixedAsset[]
 
   @@map("ODPT")
 }
 
 model FixedAsset {
-  id                 String   @id @default(cuid())
-  assetCode          String   @unique
-  description        String
-  acquisitionDate    DateTime
-  acquisitionCost    Float
-  usefulLife         Int // in months
-  salvageValue       Float
-  status             String   @default("Active")
-  assetClassId       String
-  depreciationTypeId String
-  businessUnitId     String
-
+  id                    String                  @id @default(cuid())
+  assetCode             String                  @unique
+  description           String
+  acquisitionDate       DateTime
+  acquisitionCost       Float
+  usefulLife            Int // in months
+  salvageValue          Float
+  status                String                  @default("Active")
+  assetClassId          String
+  depreciationTypeId    String
+  businessUnitId        String
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime?               @updatedAt
   assetClass            FixedAssetClass         @relation(fields: [assetClassId], references: [id])
   depreciationType      DepreciationType        @relation(fields: [depreciationTypeId], references: [id])
   businessUnit          BusinessUnit            @relation(fields: [businessUnitId], references: [id])
@@ -669,100 +727,108 @@ model FixedAsset {
 // =================================================================
 
 model CustomerCredit {
-  id             String    @id @default(cuid())
-  customerId     String    @unique
+  id             String          @id @default(cuid())
+  customerId     String          @unique
   creditLimit    Float
-  currentBalance Float     @default(0)
+  currentBalance Float           @default(0)
   paymentTerms   String // "NET30", "NET15", "COD"
-  creditStatus   String    @default("GOOD") // "GOOD", "HOLD", "BLOCKED"
+  creditStatus   String          @default("GOOD") // "GOOD", "HOLD", "BLOCKED"
   lastReviewDate DateTime?
-
-  customer BusinessPartner @relation(fields: [customerId], references: [id])
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime?       @updatedAt
+  customer       BusinessPartner @relation(fields: [customerId], references: [id])
 
   @@map("OCREDIT")
 }
 
 model ARAgingBucket {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   customerId String
-  current    Float    @default(0)
-  days30     Float    @default(0)
-  days60     Float    @default(0)
-  days90     Float    @default(0)
-  over90     Float    @default(0)
-  totalDue   Float    @default(0)
+  current    Float     @default(0)
+  days30     Float     @default(0)
+  days60     Float     @default(0)
+  days90     Float     @default(0)
+  over90     Float     @default(0)
+  totalDue   Float     @default(0)
   asOfDate   DateTime
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime? @updatedAt
 
   @@unique([customerId, asOfDate])
   @@map("OAGING")
 }
 
 model CashFlowForecast {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   forecastDate   DateTime
   openingCash    Float
   projectedIn    Float
   projectedOut   Float
   closingCash    Float
   businessUnitId String
-
-  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime?    @updatedAt
+  businessUnit   BusinessUnit @relation(fields: [businessUnitId], references: [id])
 
   @@unique([forecastDate, businessUnitId])
   @@map("OCFLOW")
 }
 
 model RecurringJournalEntry {
-  id           String   @id @default(cuid())
-  templateName String   @unique
+  id           String            @id @default(cuid())
+  templateName String            @unique
   description  String?
   frequency    String // "MONTHLY", "QUARTERLY", "ANNUALLY"
   nextRunDate  DateTime
-  isActive     Boolean  @default(true)
-  autoPost     Boolean  @default(false)
-
-  lines RecurringJELine[]
+  isActive     Boolean           @default(true)
+  autoPost     Boolean           @default(false)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime?         @updatedAt
+  lines        RecurringJELine[]
 
   @@map("ORJE")
 }
 
 model RecurringJELine {
-  id                      String  @id @default(cuid())
+  id                      String                @id @default(cuid())
   recurringJournalEntryId String
   accountId               String
   debitAmount             Float?
   creditAmount            Float?
   description             String?
-
-  recurringJE RecurringJournalEntry @relation(fields: [recurringJournalEntryId], references: [id])
-  account     Account               @relation(fields: [accountId], references: [id])
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime?             @updatedAt
+  recurringJE             RecurringJournalEntry @relation(fields: [recurringJournalEntryId], references: [id])
+  account                 Account               @relation(fields: [accountId], references: [id])
 
   @@map("ORJE1")
 }
 
 model CostCenter {
-  id           String  @id @default(cuid())
-  code         String  @unique
+  id           String                  @id @default(cuid())
+  code         String                  @unique
   name         String
   managerId    String?
   budgetAmount Float?
-  isActive     Boolean @default(true)
-
+  isActive     Boolean                 @default(true)
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime?               @updatedAt
   transactions CostCenterTransaction[]
 
   @@map("OCCTR")
 }
 
 model CostCenterTransaction {
-  id              String   @id @default(cuid())
+  id              String     @id @default(cuid())
   costCenterId    String
   accountId       String
   amount          Float
   description     String
   transactionDate DateTime
-
-  costCenter CostCenter @relation(fields: [costCenterId], references: [id])
-  account    Account    @relation(fields: [accountId], references: [id])
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime?  @updatedAt
+  costCenter      CostCenter @relation(fields: [costCenterId], references: [id])
+  account         Account    @relation(fields: [accountId], references: [id])
 
   @@map("OCCTR1")
 }
@@ -772,15 +838,16 @@ model CostCenterTransaction {
 // =================================================================
 
 model HouseBankAccount {
-  id            String @id @default(cuid())
+  id            String          @id @default(cuid())
   accountName   String
-  accountNumber String @unique
+  accountNumber String          @unique
   bankName      String
   branch        String
-  glAccountId   String @unique
-
-  glAccount  Account         @relation(fields: [glAccountId], references: [id])
-  statements BankStatement[]
+  glAccountId   String          @unique
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime?       @updatedAt
+  glAccount     Account         @relation(fields: [glAccountId], references: [id])
+  statements    BankStatement[]
 
   @@map("ODBC")
 }
@@ -801,24 +868,26 @@ model BankStatement {
 }
 
 model BankStatementLine {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   bankStatementId String
   transactionDate DateTime
   amount          Float
   description     String
-  isReconciled    Boolean  @default(false)
-
-  bankStatement BankStatement @relation(fields: [bankStatementId], references: [id])
+  isReconciled    Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime?     @updatedAt
+  bankStatement   BankStatement @relation(fields: [bankStatementId], references: [id])
 
   @@map("BNK1")
 }
 
 model Reconciliation {
-  id                 String   @id @default(cuid())
+  id                 String        @id @default(cuid())
   reconciliationDate DateTime
   bankStatementId    String
-
-  bankStatement BankStatement @relation(fields: [bankStatementId], references: [id])
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime?     @updatedAt
+  bankStatement      BankStatement @relation(fields: [bankStatementId], references: [id])
 
   @@map("ORCN")
 }
@@ -828,43 +897,44 @@ model Reconciliation {
 // =================================================================
 
 model UnitOfMeasureGroup {
-  id   String @id @default(cuid())
-  name String @unique
-
-  uoms  UnitOfMeasure[]
-  items Item[]
+  id        String          @id @default(cuid())
+  name      String          @unique
+  createdAt DateTime        @default(now())
+  updatedAt DateTime?       @updatedAt
+  uoms      UnitOfMeasure[]
+  items     Item[]
 
   @@map("OUOM")
 }
 
 model UnitOfMeasure {
-  id               String @id @default(cuid())
+  id               String             @id @default(cuid())
   name             String // e.g., "Gram", "Kilogram"
-  code             String @unique
+  code             String             @unique
   baseUoM          String // e.g., "g"
   conversionFactor Float
   uomGroupId       String
-
-  uomGroup UnitOfMeasureGroup @relation(fields: [uomGroupId], references: [id])
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime?          @updatedAt
+  uomGroup         UnitOfMeasureGroup @relation(fields: [uomGroupId], references: [id])
 
   @@map("UOM1")
 }
 
 model Item {
-  id                String   @id @default(cuid())
-  itemCode          String   @unique
-  itemName          String
-  itemType          String   @default("I") // I-Inventory, S-Service, H-Hotel Room, M-Menu Item
-  price             Float
-  avgCost           Float    @default(0)
-  currency          String
-  procurementMethod String   @default("B") // B-Buy, M-Make
-  manageBy          String   @default("None") // None, Serial, Batch
-  itemGroupId       String
-  uomGroupId        String
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
+  id                   String                @id @default(cuid())
+  itemCode             String                @unique
+  itemName             String
+  itemType             String                @default("I") // I-Inventory, S-Service, H-Hotel Room, M-Menu Item
+  price                Float
+  avgCost              Float                 @default(0)
+  currency             String
+  procurementMethod    String                @default("B") // B-Buy, M-Make
+  manageBy             String                @default("None") // None, Serial, Batch
+  itemGroupId          String
+  uomGroupId           String
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
   itemGroup            ItemGroup             @relation(fields: [itemGroupId], references: [id])
   uomGroup             UnitOfMeasureGroup    @relation(fields: [uomGroupId], references: [id])
   itemWarehouses       ItemWarehouse[]
@@ -905,10 +975,11 @@ model ItemGroup {
 }
 
 model Warehouse {
-  id      String @id @default(cuid())
-  whsCode String @unique
-  whsName String
-
+  id                 String             @id @default(cuid())
+  whsCode            String             @unique
+  whsName            String
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime?          @updatedAt
   itemWarehouses     ItemWarehouse[]
   stockTransfersFrom StockTransfer[]    @relation("FromWhs")
   stockTransfersTo   StockTransfer[]    @relation("ToWhs")
@@ -919,27 +990,29 @@ model Warehouse {
 }
 
 model ItemWarehouse {
-  id          String @id @default(cuid())
-  onHand      Float  @default(0)
-  committed   Float  @default(0)
-  onOrder     Float  @default(0)
-  avgCost     Float  @default(0)
+  id          String    @id @default(cuid())
+  onHand      Float     @default(0)
+  committed   Float     @default(0)
+  onOrder     Float     @default(0)
+  avgCost     Float     @default(0)
   itemId      String
   warehouseId String
-
-  item      Item      @relation(fields: [itemId], references: [id])
-  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+  item        Item      @relation(fields: [itemId], references: [id])
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
 
   @@unique([itemId, warehouseId])
   @@map("OITW")
 }
 
 model SerialNumber {
-  id     String @id @default(cuid())
-  number String @unique
-  itemId String
-
-  item Item @relation(fields: [itemId], references: [id])
+  id        String    @id @default(cuid())
+  number    String    @unique
+  itemId    String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+  item      Item      @relation(fields: [itemId], references: [id])
 
   @@map("OSRN")
 }
@@ -949,68 +1022,73 @@ model BatchNumber {
   number     String    @unique
   itemId     String
   expiryDate DateTime?
-
-  item Item @relation(fields: [itemId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime? @updatedAt
+  item       Item      @relation(fields: [itemId], references: [id])
 
   @@map("OBTN")
 }
 
 model StockTransfer {
-  id                 Int      @id @default(autoincrement())
-  docNum             Int      @unique
+  id                 Int                 @id @default(autoincrement())
+  docNum             Int                 @unique
   docDate            DateTime
   fromWhsCode        String
   toWhsCode          String
   fromBusinessUnitId String
   toBusinessUnitId   String
   remarks            String?
-
-  fromWarehouse    Warehouse           @relation("FromWhs", fields: [fromWhsCode], references: [whsCode])
-  toWarehouse      Warehouse           @relation("ToWhs", fields: [toWhsCode], references: [whsCode])
-  fromBusinessUnit BusinessUnit        @relation("FromBU", fields: [fromBusinessUnitId], references: [id])
-  toBusinessUnit   BusinessUnit        @relation("ToBU", fields: [toBusinessUnitId], references: [id])
-  lines            StockTransferLine[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime?           @updatedAt
+  fromWarehouse      Warehouse           @relation("FromWhs", fields: [fromWhsCode], references: [whsCode])
+  toWarehouse        Warehouse           @relation("ToWhs", fields: [toWhsCode], references: [whsCode])
+  fromBusinessUnit   BusinessUnit        @relation("FromBU", fields: [fromBusinessUnitId], references: [id])
+  toBusinessUnit     BusinessUnit        @relation("ToBU", fields: [toBusinessUnitId], references: [id])
+  lines              StockTransferLine[]
 
   @@map("OWTR")
 }
 
 model StockTransferLine {
-  id              Int    @id @default(autoincrement())
+  id              Int           @id @default(autoincrement())
   stockTransferId Int
   itemCode        String
   quantity        Float
-
-  stockTransfer StockTransfer @relation(fields: [stockTransferId], references: [id])
-  item          Item          @relation(fields: [itemCode], references: [itemCode])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime?     @updatedAt
+  stockTransfer   StockTransfer @relation(fields: [stockTransferId], references: [id])
+  item            Item          @relation(fields: [itemCode], references: [itemCode])
 
   @@map("WTR1")
 }
 
 model InventoryCount {
-  id             Int      @id @default(autoincrement())
-  docNum         Int      @unique
+  id             Int                  @id @default(autoincrement())
+  docNum         Int                  @unique
   docDate        DateTime
   warehouseId    String
   businessUnitId String
   remarks        String?
-
-  warehouse    Warehouse            @relation(fields: [warehouseId], references: [id])
-  businessUnit BusinessUnit         @relation(fields: [businessUnitId], references: [id])
-  lines        InventoryCountLine[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime?            @updatedAt
+  warehouse      Warehouse            @relation(fields: [warehouseId], references: [id])
+  businessUnit   BusinessUnit         @relation(fields: [businessUnitId], references: [id])
+  lines          InventoryCountLine[]
 
   @@map("OINC")
 }
 
 model InventoryCountLine {
-  id               Int    @id @default(autoincrement())
+  id               Int            @id @default(autoincrement())
   inventoryCountId Int
   itemCode         String
   countedQty       Float
   systemQty        Float
   variance         Float
-
-  inventoryCount InventoryCount @relation(fields: [inventoryCountId], references: [id])
-  item           Item           @relation(fields: [itemCode], references: [itemCode])
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime?      @updatedAt
+  inventoryCount   InventoryCount @relation(fields: [inventoryCountId], references: [id])
+  item             Item           @relation(fields: [itemCode], references: [itemCode])
 
   @@map("INC1")
 }
@@ -1020,7 +1098,7 @@ model InventoryCountLine {
 // =================================================================
 
 model ItemReorderPoint {
-  id           String  @id @default(cuid())
+  id           String           @id @default(cuid())
   itemId       String
   warehouseId  String
   minLevel     Float
@@ -1028,88 +1106,96 @@ model ItemReorderPoint {
   reorderQty   Float
   leadTimeDays Int
   vendorId     String?
-
-  item      Item             @relation(fields: [itemId], references: [id])
-  warehouse Warehouse        @relation(fields: [warehouseId], references: [id])
-  vendor    BusinessPartner? @relation(fields: [vendorId], references: [id])
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime?        @updatedAt
+  item         Item             @relation(fields: [itemId], references: [id])
+  warehouse    Warehouse        @relation(fields: [warehouseId], references: [id])
+  vendor       BusinessPartner? @relation(fields: [vendorId], references: [id])
 
   @@unique([itemId, warehouseId])
   @@map("OREORDER")
 }
 
 model AutoReorderSuggestion {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   itemId        String
   warehouseId   String
   suggestedQty  Float
   estimatedCost Float
   urgencyLevel  String // "LOW", "MEDIUM", "HIGH", "CRITICAL"
-  createdAt     DateTime @default(now())
-  status        String   @default("PENDING") // "PENDING", "APPROVED", "ORDERED", "REJECTED"
+  createdAt     DateTime  @default(now())
+  status        String    @default("PENDING") // "PENDING", "APPROVED", "ORDERED", "REJECTED"
+  updatedAt     DateTime? @updatedAt
 
   @@map("OAUTO")
 }
 
 model WasteTracking {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   itemId     String
   quantity   Float
   reason     String // "EXPIRED", "DAMAGED", "OVERPRODUCTION", "SPILLAGE"
   cost       Float
   reportedBy String
-  reportedAt DateTime @default(now())
-
-  item Item @relation(fields: [itemId], references: [id])
+  reportedAt DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime? @updatedAt
+  item       Item      @relation(fields: [itemId], references: [id])
 
   @@map("OWASTE")
 }
 
 model InventoryValuation {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   itemId      String
   warehouseId String
   method      String // "FIFO", "LIFO", "AVERAGE", "STANDARD"
   unitCost    Float
   totalValue  Float
   asOfDate    DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
 
   @@unique([itemId, warehouseId, asOfDate])
   @@map("OVAL")
 }
 
 model ItemLocation {
-  id          String  @id @default(cuid())
+  id          String    @id @default(cuid())
   itemId      String
   warehouseId String
   binLocation String? // Specific location within warehouse
   quantity    Float
-
-  item Item @relation(fields: [itemId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+  item        Item      @relation(fields: [itemId], references: [id])
 
   @@map("OITLOC")
 }
 
 model StockAlert {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   itemId       String
   alertType    String // "LOW_STOCK", "EXPIRY", "OVERSTOCK"
   threshold    Float
   currentLevel Float
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime? @updatedAt
 
   @@map("OSALERT")
 }
 
 model ItemExpiry {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   itemId     String
   batchNo    String
   expiryDate DateTime
   quantity   Float
   location   String
-
-  item Item @relation(fields: [itemId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime? @updatedAt
+  item       Item      @relation(fields: [itemId], references: [id])
 
   @@map("OITEXP")
 }
@@ -1131,54 +1217,59 @@ model ExpiryAlert {
 // Food & Beverage Management
 // =================================================================
 model Recipe {
-  id           String @id @default(cuid())
+  id           String             @id @default(cuid())
   menuItemId   String
   name         String
   instructions String
   prepTime     Int // minutes
   cookTime     Int // minutes
   servingSize  Int
-
-  menuItem    Item               @relation("RecipeMenuItem", fields: [menuItemId], references: [id])
-  ingredients RecipeIngredient[]
-  costs       RecipeCost[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime?          @updatedAt
+  menuItem     Item               @relation("RecipeMenuItem", fields: [menuItemId], references: [id])
+  ingredients  RecipeIngredient[]
+  costs        RecipeCost[]
 
   @@map("ORECIPE")
 }
 
 model RecipeIngredient {
-  id       String @id @default(cuid())
-  recipeId String
-  itemId   String
-  quantity Float
-  unit     String
-
-  recipe Recipe @relation(fields: [recipeId], references: [id])
-  item   Item   @relation(fields: [itemId], references: [id])
+  id        String    @id @default(cuid())
+  recipeId  String
+  itemId    String
+  quantity  Float
+  unit      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+  recipe    Recipe    @relation(fields: [recipeId], references: [id])
+  item      Item      @relation(fields: [itemId], references: [id])
 
   @@map("ORECIPE1")
 }
 
 model RecipeCost {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   recipeId       String
   totalCost      Float
   costPerServing Float
-  lastUpdated    DateTime @default(now())
-
-  recipe Recipe @relation(fields: [recipeId], references: [id])
+  lastUpdated    DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime? @updatedAt
+  recipe         Recipe    @relation(fields: [recipeId], references: [id])
 
   @@map("ORCST")
 }
 
 model NutritionalInfo {
-  id         String   @id @default(cuid())
-  menuItemId String   @unique
+  id         String    @id @default(cuid())
+  menuItemId String    @unique
   calories   Float
   protein    Float
   carbs      Float
   fat        Float
   allergens  String[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime? @updatedAt
 
   @@map("ONUTRI")
 }
@@ -1199,16 +1290,17 @@ enum DocStatus {
 // Open, Closed, Cancelled, Pending, Approved, Rejected
 
 model PurchaseRequest {
-  id             Int       @id @default(autoincrement())
-  docNum         Int       @unique
-  docStatus      DocStatus @default(P)
-  docDate        DateTime  @default(now())
-  requiredDate   DateTime
-  comments       String?
-  businessUnitId String
-  requesterId    String
-  supplierId     String?
-
+  id               Int                   @id @default(autoincrement())
+  docNum           Int                   @unique
+  docStatus        DocStatus             @default(P)
+  docDate          DateTime              @default(now())
+  requiredDate     DateTime
+  comments         String?
+  businessUnitId   String
+  requesterId      String
+  supplierId       String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime?             @updatedAt
   businessUnit     BusinessUnit          @relation(fields: [businessUnitId], references: [id])
   requester        Employee              @relation(fields: [requesterId], references: [id])
   supplier         BusinessPartner?      @relation(fields: [supplierId], references: [id])
@@ -1220,29 +1312,31 @@ model PurchaseRequest {
 }
 
 model PurchaseRequestLine {
-  id                Int    @id @default(autoincrement())
+  id                Int             @id @default(autoincrement())
   purchaseRequestId Int
   itemCode          String
   description       String
   quantity          Float
-
-  purchaseRequest PurchaseRequest @relation(fields: [purchaseRequestId], references: [id])
-  item            Item            @relation(fields: [itemCode], references: [itemCode])
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime?       @updatedAt
+  purchaseRequest   PurchaseRequest @relation(fields: [purchaseRequestId], references: [id])
+  item              Item            @relation(fields: [itemCode], references: [itemCode])
 
   @@map("PRQ1")
 }
 
 model PurchaseOrder {
-  id             Int       @id @default(autoincrement())
-  docNum         Int       @unique
-  docStatus      DocStatus @default(O)
-  docDate        DateTime
-  docDueDate     DateTime
-  docTotal       Float
-  businessUnitId String
-  supplierId     String
-  baseRequestId  Int?      @unique
-
+  id              Int                 @id @default(autoincrement())
+  docNum          Int                 @unique
+  docStatus       DocStatus           @default(O)
+  docDate         DateTime
+  docDueDate      DateTime
+  docTotal        Float
+  businessUnitId  String
+  supplierId      String
+  baseRequestId   Int?                @unique
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime?           @updatedAt
   businessUnit    BusinessUnit        @relation(fields: [businessUnitId], references: [id])
   supplier        BusinessPartner     @relation(fields: [supplierId], references: [id])
   baseRequest     PurchaseRequest?    @relation(fields: [baseRequestId], references: [docNum])
@@ -1253,14 +1347,15 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderLine {
-  id              Int    @id @default(autoincrement())
-  purchaseOrderId Int
-  itemCode        String
-  description     String
-  quantity        Float
-  price           Float
-  lineTotal       Float
-
+  id                  Int                  @id @default(autoincrement())
+  purchaseOrderId     Int
+  itemCode            String
+  description         String
+  quantity            Float
+  price               Float
+  lineTotal           Float
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime?            @updatedAt
   purchaseOrder       PurchaseOrder        @relation(fields: [purchaseOrderId], references: [id])
   item                Item                 @relation(fields: [itemCode], references: [itemCode])
   goodsReceiptPOLines GoodsReceiptPOLine[]
@@ -1269,135 +1364,144 @@ model PurchaseOrderLine {
 }
 
 model GoodsReceiptPO {
-  id             Int      @id @default(autoincrement())
-  docNum         Int      @unique
+  id             Int                  @id @default(autoincrement())
+  docNum         Int                  @unique
   docDate        DateTime
   businessUnitId String
   supplierId     String
   baseOrderId    Int
-
-  businessUnit BusinessUnit         @relation(fields: [businessUnitId], references: [id])
-  supplier     BusinessPartner      @relation(fields: [supplierId], references: [id])
-  baseOrder    PurchaseOrder        @relation(fields: [baseOrderId], references: [docNum])
-  lines        GoodsReceiptPOLine[]
-  landedCosts  LandedCost[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime?            @updatedAt
+  businessUnit   BusinessUnit         @relation(fields: [businessUnitId], references: [id])
+  supplier       BusinessPartner      @relation(fields: [supplierId], references: [id])
+  baseOrder      PurchaseOrder        @relation(fields: [baseOrderId], references: [docNum])
+  lines          GoodsReceiptPOLine[]
+  landedCosts    LandedCost[]
 
   @@map("OPDN")
 }
 
 model GoodsReceiptPOLine {
-  id               Int    @id @default(autoincrement())
+  id               Int               @id @default(autoincrement())
   goodsReceiptPOId Int
   itemCode         String
   quantity         Float
   baseOrderLineId  Int
-
-  goodsReceiptPO GoodsReceiptPO    @relation(fields: [goodsReceiptPOId], references: [id])
-  item           Item              @relation(fields: [itemCode], references: [itemCode])
-  baseOrderLine  PurchaseOrderLine @relation(fields: [baseOrderLineId], references: [id])
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime?         @updatedAt
+  goodsReceiptPO   GoodsReceiptPO    @relation(fields: [goodsReceiptPOId], references: [id])
+  item             Item              @relation(fields: [itemCode], references: [itemCode])
+  baseOrderLine    PurchaseOrderLine @relation(fields: [baseOrderLineId], references: [id])
 
   @@map("PDN1")
 }
 
 model PurchaseReturn {
-  id             Int      @id @default(autoincrement())
-  docNum         Int      @unique
+  id             Int                  @id @default(autoincrement())
+  docNum         Int                  @unique
   docDate        DateTime
   businessUnitId String
   supplierId     String
-
-  businessUnit BusinessUnit         @relation(fields: [businessUnitId], references: [id])
-  supplier     BusinessPartner      @relation(fields: [supplierId], references: [id])
-  lines        PurchaseReturnLine[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime?            @updatedAt
+  businessUnit   BusinessUnit         @relation(fields: [businessUnitId], references: [id])
+  supplier       BusinessPartner      @relation(fields: [supplierId], references: [id])
+  lines          PurchaseReturnLine[]
 
   @@map("ORTN")
 }
 
 model PurchaseReturnLine {
-  id               Int    @id @default(autoincrement())
+  id               Int            @id @default(autoincrement())
   purchaseReturnId Int
   itemCode         String
   quantity         Float
-
-  purchaseReturn PurchaseReturn @relation(fields: [purchaseReturnId], references: [id])
-  item           Item           @relation(fields: [itemCode], references: [itemCode])
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime?      @updatedAt
+  purchaseReturn   PurchaseReturn @relation(fields: [purchaseReturnId], references: [id])
+  item             Item           @relation(fields: [itemCode], references: [itemCode])
 
   @@map("RTN1")
 }
 
 model LandedCost {
-  id             Int    @id @default(autoincrement())
-  docNum         Int    @unique
+  id             Int              @id @default(autoincrement())
+  docNum         Int              @unique
   baseDocumentId Int
   businessUnitId String
-
-  baseDocument GoodsReceiptPO   @relation(fields: [baseDocumentId], references: [docNum])
-  businessUnit BusinessUnit     @relation(fields: [businessUnitId], references: [id])
-  lines        LandedCostLine[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime?        @updatedAt
+  baseDocument   GoodsReceiptPO   @relation(fields: [baseDocumentId], references: [docNum])
+  businessUnit   BusinessUnit     @relation(fields: [businessUnitId], references: [id])
+  lines          LandedCostLine[]
 
   @@map("OIPF")
 }
 
 model LandedCostLine {
-  id           Int    @id @default(autoincrement())
+  id           Int        @id @default(autoincrement())
   landedCostId Int
   costType     String // Freight, Insurance, Duties
   amount       Float
-
-  landedCost LandedCost @relation(fields: [landedCostId], references: [id])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime?  @updatedAt
+  landedCost   LandedCost @relation(fields: [landedCostId], references: [id])
 
   @@map("IPF1")
 }
 
 model VendorPriceList {
-  id       String @id @default(cuid())
-  vendorId String
-  itemId   String
-  price    Float
-
-  vendor BusinessPartner @relation(fields: [vendorId], references: [id])
-  item   Item            @relation(fields: [itemId], references: [id])
+  id        String          @id @default(cuid())
+  vendorId  String
+  itemId    String
+  price     Float
+  createdAt DateTime        @default(now())
+  updatedAt DateTime?       @updatedAt
+  vendor    BusinessPartner @relation(fields: [vendorId], references: [id])
+  item      Item            @relation(fields: [itemId], references: [id])
 
   @@map("OSPP")
 }
 
 model ApprovalTemplate {
-  id          String  @id @default(cuid())
-  name        String  @unique
+  id          String          @id @default(cuid())
+  name        String          @unique
   description String?
-  isActive    Boolean @default(true)
-
-  stages ApprovalStage[]
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime?       @updatedAt
+  stages      ApprovalStage[]
 
   @@map("OAPT")
 }
 
 model ApprovalStage {
-  id                 String @id @default(cuid())
+  id                 String            @id @default(cuid())
   name               String
   level              Int // Order of the stage
   approvalTemplateId String
-
-  template         ApprovalTemplate  @relation(fields: [approvalTemplateId], references: [id])
-  approvers        User[]            @relation("StageApprovers")
-  approvalRequests ApprovalRequest[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime?         @updatedAt
+  template           ApprovalTemplate  @relation(fields: [approvalTemplateId], references: [id])
+  approvers          User[]            @relation("StageApprovers")
+  approvalRequests   ApprovalRequest[]
 
   @@map("APL1")
 }
 
 model ApprovalRequest {
-  id             String    @id @default(cuid())
+  id             String          @id @default(cuid())
   documentType   String // e.g., "PurchaseRequest"
   documentId     Int
   currentStageId String
-  status         DocStatus @default(P) // Pending, Approved, Rejected
+  status         DocStatus       @default(P) // Pending, Approved, Rejected
   remarks        String?
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime        @default(now())
   approverId     String
-
-  document PurchaseRequest @relation(fields: [documentId], references: [docNum])
-  stage    ApprovalStage   @relation(fields: [currentStageId], references: [id])
-  approver User            @relation(fields: [approverId], references: [id])
+  updatedAt      DateTime?       @updatedAt
+  document       PurchaseRequest @relation(fields: [documentId], references: [docNum])
+  stage          ApprovalStage   @relation(fields: [currentStageId], references: [id])
+  approver       User            @relation(fields: [approverId], references: [id])
 
   @@map("OAPL")
 }
@@ -1407,12 +1511,13 @@ model ApprovalRequest {
 // =================================================================
 
 model HotelRoomType {
-  id          String  @id @default(cuid())
-  name        String  @unique // e.g., "Deluxe King", "Standard Twin"
-  description String?
-  baseRate    Float
-  itemMapId   String  @unique // Links to a service item in OITM
-
+  id               String            @id @default(cuid())
+  name             String            @unique // e.g., "Deluxe King", "Standard Twin"
+  description      String?
+  baseRate         Float
+  itemMapId        String            @unique // Links to a service item in OITM
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime?         @updatedAt
   item             Item              @relation(fields: [itemMapId], references: [id])
   rooms            HotelRoom[]
   ratePlans        RatePlan[]
@@ -1425,13 +1530,14 @@ model HotelRoomType {
 }
 
 model HotelRoom {
-  id                 String @id @default(cuid())
-  roomNumber         String
-  status             String @default("Available") // Available, Occupied, OutOfOrder
-  housekeepingStatus String @default("Clean") // Clean, Dirty, Inspect
-  businessUnitId     String
-  roomTypeId         String
-
+  id                  String               @id @default(cuid())
+  roomNumber          String
+  status              String               @default("Available") // Available, Occupied, OutOfOrder
+  housekeepingStatus  String               @default("Clean") // Clean, Dirty, Inspect
+  businessUnitId      String
+  roomTypeId          String
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime?            @updatedAt
   businessUnit        BusinessUnit         @relation(fields: [businessUnitId], references: [id])
   roomType            HotelRoomType        @relation(fields: [roomTypeId], references: [id])
   bookings            HotelBooking[]
@@ -1444,13 +1550,14 @@ model HotelRoom {
 }
 
 model RatePlan {
-  id         String   @id @default(cuid())
-  name       String // e.g., "Peak Season", "Weekday Promo"
-  roomTypeId String
-  startDate  DateTime
-  endDate    DateTime
-  rate       Float
-
+  id             String            @id @default(cuid())
+  name           String // e.g., "Peak Season", "Weekday Promo"
+  roomTypeId     String
+  startDate      DateTime
+  endDate        DateTime
+  rate           Float
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime?         @updatedAt
   roomType       HotelRoomType     @relation(fields: [roomTypeId], references: [id])
   bookings       HotelBooking[]
   restrictions   RateRestriction[]
@@ -1469,24 +1576,29 @@ model HotelBooking {
   checkOutDate   DateTime
   status         String   @default("Confirmed") // Confirmed, CheckedIn, CheckedOut, Cancelled, NoShow
   groupBookingId String?
+  businessUnitId String?
 
   guest         BusinessPartner       @relation(fields: [guestId], references: [id])
   room          HotelRoom             @relation(fields: [roomId], references: [id])
   ratePlan      RatePlan              @relation(fields: [ratePlanId], references: [id])
   groupBooking  GroupBooking?         @relation("GroupReservations", fields: [groupBookingId], references: [id])
+  businessUnit  BusinessUnit?         @relation(fields: [businessUnitId], references: [id])
   folio         Folio?
   modifications BookingModification[]
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime?             @updatedAt
 
   @@map("OHBK")
 }
 
 model Folio {
-  id          String @id @default(cuid())
-  bookingId   String @unique
-  totalDebit  Float  @default(0)
-  totalCredit Float  @default(0)
-  balance     Float  @default(0)
-
+  id           String             @id @default(cuid())
+  bookingId    String             @unique
+  totalDebit   Float              @default(0)
+  totalCredit  Float              @default(0)
+  balance      Float              @default(0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime?          @updatedAt
   booking      HotelBooking       @relation(fields: [bookingId], references: [id])
   transactions FolioTransaction[]
   payments     FolioPayment[]
@@ -1495,45 +1607,46 @@ model Folio {
 }
 
 model FolioTransaction {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   folioId     String
   description String
   amount      Float
-  type        String   @default("DEBIT") // DEBIT or CREDIT
+  type        String    @default("DEBIT") // DEBIT or CREDIT
   taxCodeId   String?
-  taxAmount   Float    @default(0)
-  createdAt   DateTime @default(now())
-
-  folio   Folio    @relation(fields: [folioId], references: [id])
-  taxCode TaxCode? @relation(fields: [taxCodeId], references: [id])
+  taxAmount   Float     @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+  folio       Folio     @relation(fields: [folioId], references: [id])
+  taxCode     TaxCode?  @relation(fields: [taxCodeId], references: [id])
 
   @@map("FOL1")
 }
 
 model FolioPayment {
-  id              Int      @id @default(autoincrement())
+  id              Int           @id @default(autoincrement())
   folioId         String
   paymentMethodId String
   amount          Float
-  createdAt       DateTime @default(now())
-
-  folio         Folio         @relation(fields: [folioId], references: [id])
-  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime?     @updatedAt
+  folio           Folio         @relation(fields: [folioId], references: [id])
+  paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id])
 
   @@map("OFP1")
 }
 
 model HousekeepingLog {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   roomId     String
   employeeId String
   statusFrom String
   statusTo   String
   remarks    String?
-  timestamp  DateTime @default(now())
-
-  room     HotelRoom @relation(fields: [roomId], references: [id])
-  employee Employee  @relation(fields: [employeeId], references: [id])
+  timestamp  DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime? @updatedAt
+  room       HotelRoom @relation(fields: [roomId], references: [id])
+  employee   Employee  @relation(fields: [employeeId], references: [id])
 
   @@map("OHKL")
 }
@@ -1543,7 +1656,7 @@ model HousekeepingLog {
 // =================================================================
 
 model RoomInventory {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   roomTypeId      String
   businessUnitId  String
   date            DateTime
@@ -1551,48 +1664,51 @@ model RoomInventory {
   availableRooms  Int
   blockedRooms    Int
   outOfOrderRooms Int
-
-  roomType     HotelRoomType @relation(fields: [roomTypeId], references: [id])
-  businessUnit BusinessUnit  @relation(fields: [businessUnitId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime?     @updatedAt
+  roomType        HotelRoomType @relation(fields: [roomTypeId], references: [id])
+  businessUnit    BusinessUnit  @relation(fields: [businessUnitId], references: [id])
 
   @@unique([roomTypeId, businessUnitId, date])
   @@map("ORINV")
 }
 
 model RoomBlock {
-  id            String   @id @default(cuid())
+  id            String        @id @default(cuid())
   blockName     String
   roomTypeId    String
   startDate     DateTime
   endDate       DateTime
   blockedRooms  Int
-  releasedRooms Int      @default(0)
+  releasedRooms Int           @default(0)
   blockType     String // "GROUP", "MAINTENANCE", "CORPORATE"
   contactId     String?
-
-  roomType HotelRoomType @relation(fields: [roomTypeId], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime?     @updatedAt
+  roomType      HotelRoomType @relation(fields: [roomTypeId], references: [id])
 
   @@map("ORBLK")
 }
 
 model RateRestriction {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   ratePlanId        String
   date              DateTime
   minStay           Int?
   maxStay           Int?
-  closedToArrival   Boolean  @default(false)
-  closedToDeparture Boolean  @default(false)
-  stopSell          Boolean  @default(false)
-
-  ratePlan RatePlan @relation(fields: [ratePlanId], references: [id])
+  closedToArrival   Boolean   @default(false)
+  closedToDeparture Boolean   @default(false)
+  stopSell          Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime? @updatedAt
+  ratePlan          RatePlan  @relation(fields: [ratePlanId], references: [id])
 
   @@unique([ratePlanId, date])
   @@map("ORRES")
 }
 
 model PackageDeal {
-  id          String   @id @default(cuid())
+  id          String        @id @default(cuid())
   name        String
   description String?
   roomTypeId  String
@@ -1600,84 +1716,89 @@ model PackageDeal {
   inclusions  String[] // ["BREAKFAST", "WIFI", "PARKING"]
   validFrom   DateTime
   validTo     DateTime
-
-  roomType HotelRoomType @relation(fields: [roomTypeId], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime?     @updatedAt
+  roomType    HotelRoomType @relation(fields: [roomTypeId], references: [id])
 
   @@map("OPKG")
 }
 
 model GroupBooking {
-  id            String    @id @default(cuid())
+  id            String          @id @default(cuid())
   groupName     String
   contactId     String
   eventDate     DateTime?
   totalRooms    Int
   blockedRooms  Int
-  pickedUpRooms Int       @default(0)
+  pickedUpRooms Int             @default(0)
   groupRate     Float
   cutOffDate    DateTime
-
-  contact      BusinessPartner @relation(fields: [contactId], references: [id])
-  reservations HotelBooking[]  @relation("GroupReservations")
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime?       @updatedAt
+  contact       BusinessPartner @relation(fields: [contactId], references: [id])
+  reservations  HotelBooking[]  @relation("GroupReservations")
 
   @@map("OGRP")
 }
 
 model BookingModification {
-  id               String   @id @default(cuid())
+  id               String       @id @default(cuid())
   bookingId        String
   modificationType String // "ROOM_CHANGE", "DATE_CHANGE", "RATE_CHANGE", "CANCELLATION"
   oldValue         String?
   newValue         String?
   reason           String?
   modifiedBy       String
-  modifiedAt       DateTime @default(now())
-
-  booking HotelBooking @relation(fields: [bookingId], references: [id])
+  modifiedAt       DateTime     @default(now())
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime?    @updatedAt
+  booking          HotelBooking @relation(fields: [bookingId], references: [id])
 
   @@map("OBMOD")
 }
 
 model NoShowPolicy {
-  id            String @id @default(cuid())
+  id            String    @id @default(cuid())
   ratePlanId    String
   cutOffTime    String // "18:00"
   penaltyType   String // "FIRST_NIGHT", "PERCENTAGE", "FIXED_AMOUNT"
   penaltyAmount Float
-
-  ratePlan RatePlan @relation(fields: [ratePlanId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime? @updatedAt
+  ratePlan      RatePlan  @relation(fields: [ratePlanId], references: [id])
 
   @@map("ONOSH")
 }
 
 model OverbookingRule {
-  id             String  @id @default(cuid())
+  id             String        @id @default(cuid())
   roomTypeId     String
   maxOverbookPct Float // Maximum overbooking percentage
   walkCost       Float // Cost to walk a guest
-  isActive       Boolean @default(true)
-
-  roomType HotelRoomType @relation(fields: [roomTypeId], references: [id])
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime?     @updatedAt
+  roomType       HotelRoomType @relation(fields: [roomTypeId], references: [id])
 
   @@map("OOVER")
 }
 
 model WalkInGuest {
-  id                String   @id @default(cuid())
+  id                String          @id @default(cuid())
   guestId           String
   originalBookingId String?
   walkReason        String // "OVERBOOKED", "ROOM_ISSUE", "UPGRADE"
   compensation      Float?
   alternateHotel    String?
-  createdAt         DateTime @default(now())
-
-  guest BusinessPartner @relation(fields: [guestId], references: [id])
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime?       @updatedAt
+  guest             BusinessPartner @relation(fields: [guestId], references: [id])
 
   @@map("OWALK")
 }
 
 model PricingRule {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   roomTypeId   String
   seasonType   String // "PEAK", "OFF_PEAK", "HOLIDAY"
   dayOfWeek    String[]
@@ -1685,18 +1806,22 @@ model PricingRule {
   priceAdjust  Float // Percentage adjustment
   startDate    DateTime
   endDate      DateTime
-  isActive     Boolean  @default(true)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime? @updatedAt
 
   @@map("OPRICE")
 }
 
 model OccupancyForecast {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   date        DateTime
   roomTypeId  String
   forecasted  Int
   actual      Int?
   averageRate Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
 
   @@unique([date, roomTypeId])
   @@map("OOCCUP")
@@ -1707,32 +1832,33 @@ model OccupancyForecast {
 // =================================================================
 
 model HousekeepingTask {
-  id            String    @id @default(cuid())
+  id            String                  @id @default(cuid())
   roomId        String
   taskType      String // "CLEANING", "MAINTENANCE", "INSPECTION"
   priority      String // "LOW", "MEDIUM", "HIGH", "URGENT"
   estimatedTime Int // minutes
   actualTime    Int?
-  status        String    @default("PENDING") // "PENDING", "IN_PROGRESS", "COMPLETED"
+  status        String                  @default("PENDING") // "PENDING", "IN_PROGRESS", "COMPLETED"
   assignedToId  String
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime                @default(now())
   completedAt   DateTime?
-
-  room       HotelRoom               @relation(fields: [roomId], references: [id])
-  assignedTo Employee                @relation(fields: [assignedToId], references: [id])
-  checklist  HousekeepingChecklist[]
+  updatedAt     DateTime?               @updatedAt
+  room          HotelRoom               @relation(fields: [roomId], references: [id])
+  assignedTo    Employee                @relation(fields: [assignedToId], references: [id])
+  checklist     HousekeepingChecklist[]
 
   @@map("OHKTASK")
 }
 
 model HousekeepingChecklist {
-  id          String  @id @default(cuid())
+  id          String           @id @default(cuid())
   taskId      String
   item        String // "Clean bathroom", "Check minibar"
-  isCompleted Boolean @default(false)
+  isCompleted Boolean          @default(false)
   notes       String?
-
-  task HousekeepingTask @relation(fields: [taskId], references: [id])
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime?        @updatedAt
+  task        HousekeepingTask @relation(fields: [taskId], references: [id])
 
   @@map("OHKCHECK")
 }
@@ -1742,42 +1868,45 @@ model HousekeepingChecklist {
 // =================================================================
 
 model Event {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   eventName   String
   eventType   String // "WEDDING", "CONFERENCE", "BIRTHDAY", "CORPORATE"
   guestId     String
   eventDate   DateTime
   guestCount  Int
   totalAmount Float
-  status      String   @default("CONFIRMED") // "INQUIRY", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"
-
-  rooms    EventRoom[]
-  services EventService[]
+  status      String         @default("CONFIRMED") // "INQUIRY", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime?      @updatedAt
+  rooms       EventRoom[]
+  services    EventService[]
 
   @@map("OEVENT")
 }
 
 model EventRoom {
-  id       String @id @default(cuid())
-  eventId  String
-  roomId   String
-  setup    String // "THEATER", "CLASSROOM", "U_SHAPE", "BANQUET"
-  capacity Int
-
-  event Event @relation(fields: [eventId], references: [id])
+  id        String    @id @default(cuid())
+  eventId   String
+  roomId    String
+  setup     String // "THEATER", "CLASSROOM", "U_SHAPE", "BANQUET"
+  capacity  Int
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+  event     Event     @relation(fields: [eventId], references: [id])
 
   @@map("OEVENT1")
 }
 
 model EventService {
-  id          String @id @default(cuid())
+  id          String    @id @default(cuid())
   eventId     String
   serviceName String
   quantity    Int
   unitPrice   Float
   totalPrice  Float
-
-  event Event @relation(fields: [eventId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+  event       Event     @relation(fields: [eventId], references: [id])
 
   @@map("OEVENT2")
 }
@@ -1787,21 +1916,23 @@ model EventService {
 // =================================================================
 
 model Menu {
-  id             String @id @default(cuid())
+  id             String         @id @default(cuid())
   name           String // e.g. "Lobby Cafe Menu", "Rooftop Bar Menu"
   businessUnitId String
-
-  businessUnit BusinessUnit   @relation(fields: [businessUnitId], references: [id])
-  categories   MenuCategory[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime?      @updatedAt
+  businessUnit   BusinessUnit   @relation(fields: [businessUnitId], references: [id])
+  categories     MenuCategory[]
 
   @@map("OMNU")
 }
 
 model MenuCategory {
-  id     String @id @default(cuid())
-  name   String // e.g. "Appetizers", "Main Courses", "Desserts"
-  menuId String
-
+  id        String     @id @default(cuid())
+  name      String // e.g. "Appetizers", "Main Courses", "Desserts"
+  menuId    String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime?  @updatedAt
   menu      Menu       @relation(fields: [menuId], references: [id])
   menuItems MenuItem[]
 
@@ -1814,60 +1945,66 @@ model MenuItem {
 
   menuCategory MenuCategory @relation(fields: [menuCategoryId], references: [id])
   item         Item         @relation(fields: [itemId], references: [id])
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime?    @updatedAt
 
   @@id([menuCategoryId, itemId])
   @@map("MNU1")
 }
 
 model POSTerminal {
-  id             String @id @default(cuid())
+  id             String       @id @default(cuid())
   name           String
   businessUnitId String
-
-  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id])
-  posOrders    POSOrder[]
-  shifts       POSShift[]
-  cashDrawers  CashDrawer[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime?    @updatedAt
+  businessUnit   BusinessUnit @relation(fields: [businessUnitId], references: [id])
+  posOrders      POSOrder[]
+  shifts         POSShift[]
+  cashDrawers    CashDrawer[]
 
   @@map("OPOS")
 }
 
 model POSShift {
-  id          String    @id @default(cuid())
+  id          String      @id @default(cuid())
   startAmount Float
   endAmount   Float?
-  startTime   DateTime  @default(now())
+  startTime   DateTime    @default(now())
   endTime     DateTime?
-  status      String    @default("Open") // Open, Closed
+  status      String      @default("Open") // Open, Closed
   userId      String
   terminalId  String
-
-  user      User        @relation(fields: [userId], references: [id])
-  terminal  POSTerminal @relation(fields: [terminalId], references: [id])
-  posOrders POSOrder[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime?   @updatedAt
+  user        User        @relation(fields: [userId], references: [id])
+  terminal    POSTerminal @relation(fields: [terminalId], references: [id])
+  posOrders   POSOrder[]
 
   @@map("OSFT")
 }
 
 model RestaurantTable {
-  id             String @id @default(cuid())
+  id             String       @id @default(cuid())
   tableNumber    String
-  status         String @default("Available") // Available, Occupied, Reserved
+  status         String       @default("Available") // Available, Occupied, Reserved
   businessUnitId String
-
-  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id])
-  posOrders    POSOrder[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime?    @updatedAt
+  businessUnit   BusinessUnit @relation(fields: [businessUnitId], references: [id])
+  posOrders      POSOrder[]
 
   @@map("ORTB")
 }
 
 model Discount {
-  id       String  @id @default(cuid())
-  name     String  @unique
-  type     String // PERCENTAGE, FIXED_AMOUNT
-  value    Float
-  isActive Boolean @default(true)
-
+  id            String         @id @default(cuid())
+  name          String         @unique
+  type          String // PERCENTAGE, FIXED_AMOUNT
+  value         Float
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime?      @updatedAt
   posOrders     POSOrder[]
   posOrderLines POSOrderLine[]
 
@@ -1875,9 +2012,9 @@ model Discount {
 }
 
 model POSOrder {
-  id             Int      @id @default(autoincrement())
-  docNum         Int      @unique
-  docDate        DateTime @default(now())
+  id             Int                  @id @default(autoincrement())
+  docNum         Int                  @unique
+  docDate        DateTime             @default(now())
   totalBeforeTax Float
   docTotal       Float
   taxAmount      Float
@@ -1888,7 +2025,8 @@ model POSOrder {
   tableId        String?
   customerId     String?
   discountId     String?
-
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime?            @updatedAt
   businessUnit   BusinessUnit         @relation(fields: [businessUnitId], references: [id])
   terminal       POSTerminal          @relation(fields: [terminalId], references: [id])
   shift          POSShift             @relation(fields: [shiftId], references: [id])
@@ -1907,7 +2045,7 @@ model POSOrder {
 }
 
 model POSOrderLine {
-  id          Int     @id @default(autoincrement())
+  id          Int                @id @default(autoincrement())
   posOrderId  Int
   itemCode    String
   description String
@@ -1916,14 +2054,15 @@ model POSOrderLine {
   lineTotal   Float
   discountId  String?
   taxCodeId   String?
-  taxAmount   Float   @default(0)
-
-  posOrder  POSOrder           @relation(fields: [posOrderId], references: [id])
-  item      Item               @relation(fields: [itemCode], references: [itemCode])
-  discount  Discount?          @relation(fields: [discountId], references: [id])
-  taxCode   TaxCode?           @relation(fields: [taxCodeId], references: [id])
-  returns   POSReturnLine[]
-  modifiers POSOrderModifier[]
+  taxAmount   Float              @default(0)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime?          @updatedAt
+  posOrder    POSOrder           @relation(fields: [posOrderId], references: [id])
+  item        Item               @relation(fields: [itemCode], references: [itemCode])
+  discount    Discount?          @relation(fields: [discountId], references: [id])
+  taxCode     TaxCode?           @relation(fields: [taxCodeId], references: [id])
+  returns     POSReturnLine[]
+  modifiers   POSOrderModifier[]
 
   @@map("PDI1")
 }
@@ -1933,139 +2072,148 @@ model POSOrderLine {
 // =================================================================
 
 model POSOrderModifier {
-  id             String @id @default(cuid())
+  id             String       @id @default(cuid())
   posOrderLineId Int
   modifierName   String // "Extra Cheese", "No Onions", "Medium Rare"
-  price          Float  @default(0)
-
-  posOrderLine POSOrderLine @relation(fields: [posOrderLineId], references: [id])
+  price          Float        @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime?    @updatedAt
+  posOrderLine   POSOrderLine @relation(fields: [posOrderLineId], references: [id])
 
   @@map("PDI2")
 }
 
 model POSOrderSplit {
-  id         String @id @default(cuid())
+  id         String            @id @default(cuid())
   posOrderId Int
   splitType  String // "EQUAL", "BY_ITEM", "BY_AMOUNT"
   guestCount Int
-
-  posOrder POSOrder          @relation(fields: [posOrderId], references: [id])
-  payments POSSplitPayment[]
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime?         @updatedAt
+  posOrder   POSOrder          @relation(fields: [posOrderId], references: [id])
+  payments   POSSplitPayment[]
 
   @@map("OSPL")
 }
 
 model POSSplitPayment {
-  id              String @id @default(cuid())
+  id              String        @id @default(cuid())
   splitId         String
   paymentMethodId String
   amount          Float
   guestNumber     Int
-
-  split         POSOrderSplit @relation(fields: [splitId], references: [id])
-  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime?     @updatedAt
+  split           POSOrderSplit @relation(fields: [splitId], references: [id])
+  paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id])
 
   @@map("OSPL1")
 }
 
 model POSVoid {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   posOrderId  Int
   lineId      Int?
   reason      String
   voidedBy    String
-  voidedAt    DateTime @default(now())
+  voidedAt    DateTime  @default(now())
   managerAuth String? // Manager authorization for voids
   amount      Float
-
-  posOrder POSOrder @relation(fields: [posOrderId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+  posOrder    POSOrder  @relation(fields: [posOrderId], references: [id])
 
   @@map("OVOI")
 }
 
 model ServiceCharge {
-  id          String  @id @default(cuid())
+  id          String    @id @default(cuid())
   posOrderId  Int
   type        String // "SERVICE_CHARGE", "GRATUITY", "DELIVERY_FEE"
   rate        Float // Percentage or fixed amount
   amount      Float
-  isAutomatic Boolean @default(false)
-
-  posOrder POSOrder @relation(fields: [posOrderId], references: [id])
+  isAutomatic Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+  posOrder    POSOrder  @relation(fields: [posOrderId], references: [id])
 
   @@map("OSVC")
 }
 
 model CashDrawer {
-  id            String    @id @default(cuid())
+  id            String            @id @default(cuid())
   terminalId    String
   openAmount    Float
   currentAmount Float
   lastCounted   DateTime?
-
-  terminal     POSTerminal       @relation(fields: [terminalId], references: [id])
-  transactions CashTransaction[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime?         @updatedAt
+  terminal      POSTerminal       @relation(fields: [terminalId], references: [id])
+  transactions  CashTransaction[]
 
   @@map("OCDR")
 }
 
 model CashTransaction {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   cashDrawerId String
   type         String // "SALE", "REFUND", "PAYOUT", "DROP"
   amount       Float
   reason       String?
   userId       String
-  createdAt    DateTime @default(now())
-
-  cashDrawer CashDrawer @relation(fields: [cashDrawerId], references: [id])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime?  @updatedAt
+  cashDrawer   CashDrawer @relation(fields: [cashDrawerId], references: [id])
 
   @@map("OCTR")
 }
 
 model POSReturn {
-  id             Int      @id @default(autoincrement())
-  docNum         Int      @unique
+  id             Int             @id @default(autoincrement())
+  docNum         Int             @unique
   docDate        DateTime
   businessUnitId String
   baseOrderId    Int
-
-  businessUnit BusinessUnit    @relation(fields: [businessUnitId], references: [id])
-  baseOrder    POSOrder        @relation(fields: [baseOrderId], references: [docNum])
-  lines        POSReturnLine[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime?       @updatedAt
+  businessUnit   BusinessUnit    @relation(fields: [businessUnitId], references: [id])
+  baseOrder      POSOrder        @relation(fields: [baseOrderId], references: [docNum])
+  lines          POSReturnLine[]
 
   @@map("OPSR")
 }
 
 model POSReturnLine {
-  id              Int    @id @default(autoincrement())
+  id              Int          @id @default(autoincrement())
   posReturnId     Int
   itemCode        String
   quantity        Float
   baseOrderLineId Int
-
-  posReturn     POSReturn    @relation(fields: [posReturnId], references: [id])
-  item          Item         @relation(fields: [itemCode], references: [id])
-  baseOrderLine POSOrderLine @relation(fields: [baseOrderLineId], references: [id])
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime?    @updatedAt
+  posReturn       POSReturn    @relation(fields: [posReturnId], references: [id])
+  item            Item         @relation(fields: [itemCode], references: [id])
+  baseOrderLine   POSOrderLine @relation(fields: [baseOrderLineId], references: [id])
 
   @@map("PSR1")
 }
 
 model KitchenOrderTicket {
-  id         Int      @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   posOrderId Int
-  status     String   @default("Pending") // Pending, InProgress, Ready
-  createdAt  DateTime @default(now())
-
-  posOrder POSOrder @relation(fields: [posOrderId], references: [id])
+  status     String    @default("Pending") // Pending, InProgress, Ready
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime? @updatedAt
+  posOrder   POSOrder  @relation(fields: [posOrderId], references: [id])
 
   @@map("OKOT")
 }
 
 model PaymentMethod {
-  id   String @id @default(cuid())
-  name String @unique // Cash, Credit Card, Room Charge, Gift Card
-
+  id            String            @id @default(cuid())
+  name          String            @unique // Cash, Credit Card, Room Charge, Gift Card
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime?         @updatedAt
   posPayments   POSPayment[]
   folioPayments FolioPayment[]
   splitPayments POSSplitPayment[]
@@ -2074,13 +2222,14 @@ model PaymentMethod {
 }
 
 model POSPayment {
-  id              Int    @id @default(autoincrement())
+  id              Int           @id @default(autoincrement())
   posOrderId      Int
   paymentMethodId String
   amount          Float
-
-  posOrder      POSOrder      @relation(fields: [posOrderId], references: [id])
-  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime?     @updatedAt
+  posOrder        POSOrder      @relation(fields: [posOrderId], references: [id])
+  paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id])
 
   @@map("ORCT")
 }
@@ -2090,32 +2239,34 @@ model POSPayment {
 // =================================================================
 
 model SalesOrder {
-  id             Int       @id @default(autoincrement())
-  docNum         Int       @unique
-  docStatus      DocStatus @default(O)
+  id             Int              @id @default(autoincrement())
+  docNum         Int              @unique
+  docStatus      DocStatus        @default(O)
   docDate        DateTime
   docDueDate     DateTime
   docTotal       Float
   businessUnitId String
   customerId     String
-
-  businessUnit BusinessUnit     @relation(fields: [businessUnitId], references: [id])
-  customer     BusinessPartner  @relation(fields: [customerId], references: [id])
-  lines        SalesOrderLine[]
-  deliveries   Delivery[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime?        @updatedAt
+  businessUnit   BusinessUnit     @relation(fields: [businessUnitId], references: [id])
+  customer       BusinessPartner  @relation(fields: [customerId], references: [id])
+  lines          SalesOrderLine[]
+  deliveries     Delivery[]
 
   @@map("ORDR")
 }
 
 model SalesOrderLine {
-  id           Int    @id @default(autoincrement())
-  salesOrderId Int
-  itemCode     String
-  description  String
-  quantity     Float
-  price        Float
-  lineTotal    Float
-
+  id            Int            @id @default(autoincrement())
+  salesOrderId  Int
+  itemCode      String
+  description   String
+  quantity      Float
+  price         Float
+  lineTotal     Float
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime?      @updatedAt
   salesOrder    SalesOrder     @relation(fields: [salesOrderId], references: [id])
   item          Item           @relation(fields: [itemCode], references: [id])
   deliveryLines DeliveryLine[]
@@ -2124,55 +2275,58 @@ model SalesOrderLine {
 }
 
 model Delivery {
-  id             Int      @id @default(autoincrement())
-  docNum         Int      @unique
+  id             Int             @id @default(autoincrement())
+  docNum         Int             @unique
   docDate        DateTime
   businessUnitId String
   customerId     String
   baseOrderId    Int
-
-  businessUnit BusinessUnit    @relation(fields: [businessUnitId], references: [id])
-  customer     BusinessPartner @relation(fields: [customerId], references: [id])
-  baseOrder    SalesOrder      @relation(fields: [baseOrderId], references: [docNum])
-  lines        DeliveryLine[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime?       @updatedAt
+  businessUnit   BusinessUnit    @relation(fields: [businessUnitId], references: [id])
+  customer       BusinessPartner @relation(fields: [customerId], references: [id])
+  baseOrder      SalesOrder      @relation(fields: [baseOrderId], references: [docNum])
+  lines          DeliveryLine[]
 
   @@map("ODLN")
 }
 
 model DeliveryLine {
-  id              Int    @id @default(autoincrement())
+  id              Int            @id @default(autoincrement())
   deliveryId      Int
   itemCode        String
   quantity        Float
   baseOrderLineId Int
-
-  delivery      Delivery       @relation(fields: [deliveryId], references: [id])
-  item          Item           @relation(fields: [itemCode], references: [id])
-  baseOrderLine SalesOrderLine @relation(fields: [baseOrderLineId], references: [id])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime?      @updatedAt
+  delivery        Delivery       @relation(fields: [deliveryId], references: [id])
+  item            Item           @relation(fields: [itemCode], references: [id])
+  baseOrderLine   SalesOrderLine @relation(fields: [baseOrderLineId], references: [id])
 
   @@map("DLN1")
 }
 
 model ARInvoice {
-  id             Int       @id @default(autoincrement())
-  docNum         Int       @unique
-  docStatus      DocStatus @default(O)
+  id             Int             @id @default(autoincrement())
+  docNum         Int             @unique
+  docStatus      DocStatus       @default(O)
   docDate        DateTime
   totalBeforeTax Float
   docTotal       Float
   taxAmount      Float
   businessUnitId String
   customerId     String
-
-  businessUnit BusinessUnit    @relation(fields: [businessUnitId], references: [id])
-  customer     BusinessPartner @relation(fields: [customerId], references: [id])
-  lines        ARInvoiceLine[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime?       @updatedAt
+  businessUnit   BusinessUnit    @relation(fields: [businessUnitId], references: [id])
+  customer       BusinessPartner @relation(fields: [customerId], references: [id])
+  lines          ARInvoiceLine[]
 
   @@map("OINV")
 }
 
 model ARInvoiceLine {
-  id          Int     @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   arInvoiceId Int
   itemCode    String
   description String
@@ -2180,35 +2334,37 @@ model ARInvoiceLine {
   price       Float
   lineTotal   Float
   taxCodeId   String?
-  taxAmount   Float   @default(0)
-
-  arInvoice ARInvoice @relation(fields: [arInvoiceId], references: [id])
-  item      Item      @relation(fields: [itemCode], references: [id])
-  taxCode   TaxCode?  @relation(fields: [taxCodeId], references: [id])
+  taxAmount   Float     @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+  arInvoice   ARInvoice @relation(fields: [arInvoiceId], references: [id])
+  item        Item      @relation(fields: [itemCode], references: [id])
+  taxCode     TaxCode?  @relation(fields: [taxCodeId], references: [id])
 
   @@map("INV1")
 }
 
 model APInvoice {
-  id             Int       @id @default(autoincrement())
-  docNum         Int       @unique
-  docStatus      DocStatus @default(O)
+  id             Int             @id @default(autoincrement())
+  docNum         Int             @unique
+  docStatus      DocStatus       @default(O)
   docDate        DateTime
   totalBeforeTax Float
   docTotal       Float
   taxAmount      Float
   businessUnitId String
   supplierId     String
-
-  businessUnit BusinessUnit    @relation(fields: [businessUnitId], references: [id])
-  supplier     BusinessPartner @relation(fields: [supplierId], references: [id])
-  lines        APInvoiceLine[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime?       @updatedAt
+  businessUnit   BusinessUnit    @relation(fields: [businessUnitId], references: [id])
+  supplier       BusinessPartner @relation(fields: [supplierId], references: [id])
+  lines          APInvoiceLine[]
 
   @@map("OPCH")
 }
 
 model APInvoiceLine {
-  id          Int     @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   apInvoiceId Int
   itemCode    String
   description String
@@ -2216,11 +2372,12 @@ model APInvoiceLine {
   price       Float
   lineTotal   Float
   taxCodeId   String?
-  taxAmount   Float   @default(0)
-
-  apInvoice APInvoice @relation(fields: [apInvoiceId], references: [id])
-  item      Item      @relation(fields: [itemCode], references: [id])
-  taxCode   TaxCode?  @relation(fields: [taxCodeId], references: [id])
+  taxAmount   Float     @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+  apInvoice   APInvoice @relation(fields: [apInvoiceId], references: [id])
+  item        Item      @relation(fields: [itemCode], references: [id])
+  taxCode     TaxCode?  @relation(fields: [taxCodeId], references: [id])
 
   @@map("PCH1")
 }

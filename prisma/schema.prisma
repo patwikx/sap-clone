@@ -1,0 +1,582 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// =================================================================
+// System & Core Models (Users, Audit Logs)
+// =================================================================
+
+model User {
+  // Represents a system user
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String // Hashed password
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee  Employee?
+  auditLogs AuditLog[]
+
+  @@map("OUSR")
+}
+
+model AuditLog {
+  // Corresponds to ADO1/Change Log functionality
+  id            String   @id @default(cuid())
+  userId        String
+  timestamp     DateTime @default(now())
+  modelName     String // e.g., "BusinessPartner", "SalesOrder"
+  recordId      String // The ID of the record that was changed
+  action        String // CREATE, UPDATE, DELETE
+  changedFields Json? // JSON object detailing the changes { "fieldName": { "old": "value1", "new": "value2" } }
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("ADO1_LOG") // Mapped to a custom log table
+}
+
+// =================================================================
+// Human Resources Module (OHEM)
+// =================================================================
+
+model Employee {
+  // Corresponds to OHEM table in SAP B1
+  id          String  @id @default(cuid())
+  firstName   String
+  lastName    String
+  jobTitle    String?
+  department  String?
+  managerId   String?
+  officePhone String?
+  mobilePhone String?
+  email       String  @unique
+
+  userId String? @unique // Link to a system user account
+  user   User?   @relation(fields: [userId], references: [id])
+
+  manager      Employee?  @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subordinates Employee[] @relation("EmployeeManager")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("OHEM")
+}
+
+// =================================================================
+// Business Partners Module (OCRD, CRD1)
+// =================================================================
+
+model BusinessPartner {
+  // Corresponds to OCRD table in SAP B1
+  id        String   @id @default(cuid())
+  cardCode  String   @unique // BP Code
+  cardName  String // BP Name
+  cardType  String // 'C' for Customer, 'S' for Supplier, 'L' for Lead
+  groupCode Int
+  phone1    String?
+  phone2    String?
+  email     String?
+  website   String?
+  notes     String?
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses         BusinessPartnerAddress[]
+  salesOrders       SalesOrder[]
+  purchaseOrders    PurchaseOrder[]
+  arInvoices        ARInvoice[]
+  apInvoices        APInvoice[]
+  journalEntryLines JournalEntryLine[]
+  serviceContracts  ServiceContract[]
+  serviceCalls      ServiceCall[]
+  equipmentCards    CustomerEquipmentCard[]
+
+  @@map("OCRD")
+}
+
+model BusinessPartnerAddress {
+  // Corresponds to CRD1 table in SAP B1
+  id          String  @id @default(cuid())
+  addressName String
+  street      String?
+  city        String?
+  zipCode     String?
+  state       String?
+  country     String
+  addressType String // 'bo_BillTo' or 'bo_ShipTo'
+
+  businessPartnerId String
+  businessPartner   BusinessPartner @relation(fields: [businessPartnerId], references: [id])
+
+  @@map("CRD1")
+}
+
+// =================================================================
+// Financials Module (OACT, OJDT, JDT1, OPMG)
+// =================================================================
+
+model Account {
+  // Corresponds to OACT table in SAP B1
+  id               String   @id @default(cuid())
+  acctCode         String   @unique
+  acctName         String
+  acctType         String // e.g., 'asset', 'liability', 'equity', 'revenue', 'expense'
+  balance          Float    @default(0)
+  isControlAccount Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  journalEntryLines JournalEntryLine[]
+
+  @@map("OACT")
+}
+
+model JournalEntry {
+  // Corresponds to OJDT table in SAP B1
+  id        Int       @id @default(autoincrement())
+  memo      String?
+  refDate   DateTime
+  dueDate   DateTime?
+  taxDate   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  lines JournalEntryLine[]
+
+  @@map("OJDT")
+}
+
+model JournalEntryLine {
+  // Corresponds to JDT1 table in SAP B1
+  id             Int     @id @default(autoincrement())
+  journalEntryId Int
+  line_id        Int
+  accountId      String
+  debit          Float
+  credit         Float
+  shortName      String? // Could be BP code or G/L Account code
+  lineMemo       String?
+
+  journalEntry      JournalEntry     @relation(fields: [journalEntryId], references: [id])
+  account           Account          @relation(fields: [accountId], references: [id])
+  businessPartner   BusinessPartner? @relation(fields: [businessPartnerId], references: [id])
+  businessPartnerId String?
+
+  @@map("JDT1")
+}
+
+model Project {
+  // Corresponds to OPMG table
+  id        String    @id @default(cuid())
+  code      String    @unique
+  name      String
+  startDate DateTime?
+  endDate   DateTime?
+  isActive  Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("OPMG")
+}
+
+// =================================================================
+// Inventory Module (OITM, OITW, OITB)
+// =================================================================
+
+model Item {
+  // Corresponds to OITM table in SAP B1
+  id                String   @id @default(cuid())
+  itemCode          String   @unique
+  itemName          String
+  itemType          String   @default("I") // I-Inventory, S-Sales, P-Purchase
+  onHand            Float    @default(0)
+  committed         Float    @default(0)
+  onOrder           Float    @default(0)
+  price             Float
+  currency          String
+  procurementMethod String   @default("B") // B-Buy, M-Make
+  leadTime          Int      @default(1) // in days
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  itemGroupId          String
+  itemGroup            ItemGroup               @relation(fields: [itemGroupId], references: [id])
+  salesOrderLines      SalesOrderLine[]
+  purchaseOrderLines   PurchaseOrderLine[]
+  arInvoiceLines       ARInvoiceLine[]
+  apInvoiceLines       APInvoiceLine[]
+  itemWarehouses       ItemWarehouse[]
+  billOfMaterials      BillOfMaterials[]
+  bomLines             BillOfMaterialsLine[]
+  productionOrders     ProductionOrder[]
+  productionOrderLines ProductionOrderLine[]
+  equipmentCards       CustomerEquipmentCard[]
+
+  @@map("OITM")
+}
+
+model ItemGroup {
+  // Corresponds to OITB
+  id        String @id @default(cuid())
+  groupName String @unique
+  items     Item[]
+
+  @@map("OITB")
+}
+
+model Warehouse {
+  id        String   @id @default(cuid())
+  whsCode   String   @unique
+  whsName   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  itemWarehouses ItemWarehouse[]
+
+  @@map("OWHS")
+}
+
+model ItemWarehouse {
+  // Corresponds to OITW table in SAP B1
+  id        String @id @default(cuid())
+  onHand    Float  @default(0)
+  committed Float  @default(0)
+  onOrder   Float  @default(0)
+  minStock  Float  @default(0)
+  maxStock  Float  @default(0)
+
+  itemId      String
+  warehouseId String
+  item        Item      @relation(fields: [itemId], references: [id])
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+
+  @@unique([itemId, warehouseId])
+  @@map("OITW")
+}
+
+// =================================================================
+// Production Module (OITT, ITT1, OWOR, WOR1)
+// =================================================================
+
+model BillOfMaterials {
+  // Corresponds to OITT table
+  id          String @id @default(cuid())
+  bomCode     String @unique
+  description String
+  quantity    Float  @default(1) // Quantity of the parent produced
+
+  parentItemId String
+  parentItem   Item                  @relation(fields: [parentItemId], references: [id])
+  lines        BillOfMaterialsLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("OITT")
+}
+
+model BillOfMaterialsLine {
+  // Corresponds to ITT1 table
+  id                String @id @default(cuid())
+  billOfMaterialsId String
+  lineNumber        Int
+  childItemId       String
+  quantity          Float
+
+  billOfMaterials BillOfMaterials @relation(fields: [billOfMaterialsId], references: [id])
+  childItem       Item            @relation(fields: [childItemId], references: [id])
+
+  @@map("ITT1")
+}
+
+model ProductionOrder {
+  // Corresponds to OWOR table
+  id           Int      @id @default(autoincrement())
+  docNum       Int      @unique
+  status       String   @default("P") // P-Planned, R-Released, C-Closed, L-Cancelled
+  type         String   @default("S") // S-Standard, P-Special, D-Disassembly
+  plannedQty   Float
+  completedQty Float    @default(0)
+  rejectedQty  Float    @default(0)
+  postingDate  DateTime
+  dueDate      DateTime
+
+  itemId String
+  item   Item                  @relation(fields: [itemId], references: [itemCode])
+  lines  ProductionOrderLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("OWOR")
+}
+
+model ProductionOrderLine {
+  // Corresponds to WOR1 table
+  id                Int    @id @default(autoincrement())
+  productionOrderId Int
+  lineNumber        Int
+  itemCode          String
+  baseQty           Float
+  plannedQty        Float
+  issuedQty         Float
+
+  productionOrder ProductionOrder @relation(fields: [productionOrderId], references: [id])
+  item            Item            @relation(fields: [itemCode], references: [itemCode])
+
+  @@map("WOR1")
+}
+
+// =================================================================
+// Sales & Purchasing Modules (Documents)
+// =================================================================
+
+// --- Enums for document status ---
+enum DocStatus {
+  O // Open
+  C // Closed
+  L // Cancelled
+}
+
+model SalesOrder {
+  // Corresponds to ORDR table in SAP B1
+  id         Int       @id @default(autoincrement())
+  docNum     Int       @unique
+  docStatus  DocStatus @default(O)
+  docDate    DateTime
+  docDueDate DateTime
+  taxDate    DateTime
+  docTotal   Float
+  comments   String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  businessPartnerId String
+  businessPartner   BusinessPartner  @relation(fields: [businessPartnerId], references: [id])
+  lines             SalesOrderLine[]
+
+  @@map("ORDR")
+}
+
+model SalesOrderLine {
+  // Corresponds to RDR1 table in SAP B1
+  id           Int    @id @default(autoincrement())
+  salesOrderId Int
+  lineNum      Int
+  itemCode     String
+  description  String
+  quantity     Float
+  openQty      Float
+  price        Float
+  lineTotal    Float
+
+  salesOrder SalesOrder @relation(fields: [salesOrderId], references: [id])
+  item       Item       @relation(fields: [itemCode], references: [itemCode])
+
+  @@map("RDR1")
+}
+
+model ARInvoice {
+  // Corresponds to OINV table in SAP B1
+  id         Int       @id @default(autoincrement())
+  docNum     Int       @unique
+  docStatus  DocStatus @default(O)
+  docDate    DateTime
+  docDueDate DateTime
+  taxDate    DateTime
+  docTotal   Float
+  comments   String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  businessPartnerId String
+  businessPartner   BusinessPartner @relation(fields: [businessPartnerId], references: [id])
+  lines             ARInvoiceLine[]
+
+  baseDocType String? // e.g. 'SalesOrder'
+  baseDocNum  Int?
+
+  @@map("OINV")
+}
+
+model ARInvoiceLine {
+  // Corresponds to INV1 table in SAP B1
+  id          Int    @id @default(autoincrement())
+  arInvoiceId Int
+  lineNum     Int
+  itemCode    String
+  description String
+  quantity    Float
+  price       Float
+  lineTotal   Float
+
+  baseDocType String?
+  baseDocNum  Int?
+  baseLineNum Int?
+
+  arInvoice ARInvoice @relation(fields: [arInvoiceId], references: [id])
+  item      Item      @relation(fields: [itemCode], references: [itemCode])
+
+  @@map("INV1")
+}
+
+model PurchaseOrder {
+  // Corresponds to OPOR table in SAP B1
+  id         Int       @id @default(autoincrement())
+  docNum     Int       @unique
+  docStatus  DocStatus @default(O)
+  docDate    DateTime
+  docDueDate DateTime
+  taxDate    DateTime
+  docTotal   Float
+  comments   String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  businessPartnerId String
+  businessPartner   BusinessPartner     @relation(fields: [businessPartnerId], references: [id])
+  lines             PurchaseOrderLine[]
+
+  @@map("OPOR")
+}
+
+model PurchaseOrderLine {
+  // Corresponds to POR1 table in SAP B1
+  id              Int    @id @default(autoincrement())
+  purchaseOrderId Int
+  lineNum         Int
+  itemCode        String
+  description     String
+  quantity        Float
+  openQty         Float
+  price           Float
+  lineTotal       Float
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  item          Item          @relation(fields: [itemCode], references: [itemCode])
+
+  @@map("POR1")
+}
+
+model APInvoice {
+  // Corresponds to OPCH table in SAP B1
+  id         Int       @id @default(autoincrement())
+  docNum     Int       @unique
+  docStatus  DocStatus @default(O)
+  docDate    DateTime
+  docDueDate DateTime
+  taxDate    DateTime
+  docTotal   Float
+  comments   String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  businessPartnerId String
+  businessPartner   BusinessPartner @relation(fields: [businessPartnerId], references: [id])
+  lines             APInvoiceLine[]
+
+  baseDocType String?
+  baseDocNum  Int?
+
+  @@map("OPCH")
+}
+
+model APInvoiceLine {
+  // Corresponds to PCH1 table in SAP B1
+  id          Int    @id @default(autoincrement())
+  apInvoiceId Int
+  lineNum     Int
+  itemCode    String
+  description String
+  quantity    Float
+  price       Float
+  lineTotal   Float
+
+  baseDocType String?
+  baseDocNum  Int?
+  baseLineNum Int?
+
+  apInvoice APInvoice @relation(fields: [apInvoiceId], references: [id])
+  item      Item      @relation(fields: [itemCode], references: [itemCode])
+
+  @@map("PCH1")
+}
+
+// =================================================================
+// Service Module (OINS, INS1, OSCL)
+// =================================================================
+
+model CustomerEquipmentCard {
+  // Corresponds to OINS table
+  id           String @id @default(cuid())
+  itemCode     String
+  itemName     String
+  serialNumber String @unique
+
+  customerId String
+  customer   BusinessPartner @relation(fields: [customerId], references: [id])
+
+  item Item @relation(fields: [itemCode], references: [itemCode])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  serviceCalls ServiceCall[]
+
+  @@map("OINS")
+}
+
+model ServiceContract {
+  // Corresponds to INS1 (conceptually)
+  id           String   @id @default(cuid())
+  contractName String
+  customerId   String
+  startDate    DateTime
+  endDate      DateTime
+  description  String?
+
+  customer BusinessPartner @relation(fields: [customerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  serviceCalls ServiceCall[]
+
+  @@map("INS1")
+}
+
+model ServiceCall {
+  // Corresponds to OSCL table
+  id      Int    @id @default(autoincrement())
+  subject String
+
+  customerId   String
+  itemCode     String?
+  serialNumber String?
+
+  status   Int    @default(-3) // -3 Open, -2 Closed, -1 Pending
+  priority String @default("M") // L-Low, M-Medium, H-High
+
+  createdOn DateTime  @default(now())
+  closedOn  DateTime?
+
+  customer      BusinessPartner        @relation(fields: [customerId], references: [id])
+  equipmentCard CustomerEquipmentCard? @relation(fields: [serialNumber], references: [serialNumber])
+  contract      ServiceContract?       @relation(fields: [contractId], references: [id])
+  contractId    String?
+
+  @@map("OSCL")
+}

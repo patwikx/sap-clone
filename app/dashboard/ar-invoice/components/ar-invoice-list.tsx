@@ -150,7 +150,7 @@ export function ARInvoicesList({ arInvoices }: ARInvoicesListProps) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/ar-invoices/${invoice.id}`}>
+                        <Link href={`/dashboard/ar-invoices/${invoice.id}`}>
                           View Details
                         </Link>
                       </DropdownMenuItem>

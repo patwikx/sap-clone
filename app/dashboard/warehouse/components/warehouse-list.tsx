@@ -82,7 +82,7 @@ export function WarehousesList({ warehouses }: WarehousesListProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem asChild>
-                      <Link href={`/warehouses/${warehouse.id}`}>
+                      <Link href={`/dashboard/warehouses/${warehouse.id}`}>
                         View Details
                       </Link>
                     </DropdownMenuItem>

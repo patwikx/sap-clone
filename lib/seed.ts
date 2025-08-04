@@ -1,17 +1,22 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, DocStatus } from '@prisma/client';
+import { Faker, en } from '@faker-js/faker';
 import { hash } from 'bcryptjs';
 
 const prisma = new PrismaClient();
+const faker = new Faker({ locale: [en] });
+
+const USER_COUNT = 20;
+const CUSTOMER_COUNT = 100;
+const SUPPLIER_COUNT = 50;
+const ITEM_COUNT = 200;
+const DOCUMENT_COUNT = 150;
 
 async function main() {
-  console.log('Start seeding ...');
-
-  // --- Clean up existing data ---
-  await prisma.auditLog.deleteMany();
+  console.log('Clearing existing data...');
+  // Delete in reverse order of creation to avoid foreign key constraint errors
   await prisma.serviceCall.deleteMany();
   await prisma.serviceContract.deleteMany();
   await prisma.customerEquipmentCard.deleteMany();
-  await prisma.purchaseOrderLine.deleteMany();
   await prisma.purchaseOrder.deleteMany();
   await prisma.salesOrderLine.deleteMany();
   await prisma.salesOrder.deleteMany();
@@ -31,77 +36,69 @@ async function main() {
   await prisma.businessPartner.deleteMany();
   await prisma.employee.deleteMany();
   await prisma.user.deleteMany();
+  console.log('Data cleared.');
 
-  // =================================================================
-  // Seed Users & Employees
-  // =================================================================
+  console.log(`Seeding ${USER_COUNT} users and employees...`);
   const hashedPassword = await hash('password123', 10);
+  for (let i = 0; i < USER_COUNT; i++) {
+    const user = await prisma.user.create({
+      data: {
+        email: faker.internet.email(),
+        name: faker.person.fullName(),
+        password: hashedPassword,
+      },
+    });
+    await prisma.employee.create({
+      data: {
+        firstName: faker.person.firstName(),
+        lastName: faker.person.lastName(),
+        jobTitle: faker.person.jobTitle(),
+        email: faker.internet.email(),
+        userId: user.id,
+      },
+    });
+  }
 
-  const adminUser = await prisma.user.create({
-    data: {
-      email: 'admin@example.com',
-      name: 'Admin User',
-      password: hashedPassword,
-    },
-  });
-
-  const mainEmployee = await prisma.employee.create({
-    data: {
-      firstName: 'John',
-      lastName: 'Doe',
-      jobTitle: 'General Manager',
-      email: 'john.doe@example.com',
-      userId: adminUser.id,
-    },
-  });
-
-  // =================================================================
-  // Seed Business Partners (Customers & Suppliers)
-  // =================================================================
-  const customer = await prisma.businessPartner.create({
-    data: {
-      cardCode: 'C00001',
-      cardName: 'Tech Solutions Inc.',
-      cardType: 'C',
-      groupCode: 1,
-      balance: 1500.0,
-      addresses: {
-        create: [
-          {
+  console.log(`Seeding ${CUSTOMER_COUNT} customers and ${SUPPLIER_COUNT} suppliers...`);
+  for (let i = 0; i < CUSTOMER_COUNT; i++) {
+    await prisma.businessPartner.create({
+      data: {
+        cardCode: `C${String(i + 1).padStart(5, '0')}`,
+        cardName: faker.company.name(),
+        cardType: 'C',
+        groupCode: faker.number.int({ min: 1, max: 5 }),
+        balance: parseFloat(faker.finance.amount({ min: 0, max: 50000 })),
+        email: faker.internet.email(),
+        phone1: faker.phone.number(),
+        website: faker.internet.url(),
+        addresses: {
+          create: {
             addressName: 'Main Office',
-            street: '123 Tech Park',
-            city: 'Silicon Valley',
-            state: 'CA',
-            zipCode: '94043',
+            street: faker.location.streetAddress(),
+            city: faker.location.city(),
+            state: faker.location.state({ abbreviated: true }),
+            zipCode: faker.location.zipCode(),
             country: 'USA',
             addressType: 'bo_BillTo',
           },
-          {
-            addressName: 'Warehouse',
-            street: '456 Data Drive',
-            city: 'Silicon Valley',
-            state: 'CA',
-            zipCode: '94043',
-            country: 'USA',
-            addressType: 'bo_ShipTo',
-          },
-        ],
+        },
       },
-    },
-  });
+    });
+  }
+  for (let i = 0; i < SUPPLIER_COUNT; i++) {
+    await prisma.businessPartner.create({
+      data: {
+        cardCode: `V${String(i + 1).padStart(5, '0')}`,
+        cardName: faker.company.name(),
+        cardType: 'S',
+        groupCode: faker.number.int({ min: 1, max: 5 }),
+        email: faker.internet.email(),
+        phone1: faker.phone.number(),
+      },
+    });
+  }
 
-  const supplier = await prisma.businessPartner.create({
-    data: {
-      cardCode: 'V00001',
-      cardName: 'Component Suppliers LLC',
-      cardType: 'S',
-      groupCode: 2,
-    },
-  });
-
-  // =================================================================
-  // Seed Financials (Chart of Accounts)
-  // =================================================================
+  console.log('Seeding chart of accounts...');
   await prisma.account.createMany({
     data: [
       { acctCode: '101000', acctName: 'Cash', acctType: 'asset' },
@@ -111,169 +108,196 @@ async function main() {
       { acctCode: '300000', acctName: 'Common Stock', acctType: 'equity' },
       { acctCode: '400000', acctName: 'Sales Revenue', acctType: 'revenue' },
       { acctCode: '500000', acctName: 'Cost of Goods Sold', acctType: 'expense' },
+      { acctCode: '600000', acctName: 'Operating Expenses', acctType: 'expense' },
     ],
   });
 
-  // =================================================================
-  // Seed Inventory
-  // =================================================================
-  const itemGroupFinished = await prisma.itemGroup.create({ data: { groupName: 'Finished Goods' } });
-  const itemGroupComponents = await prisma.itemGroup.create({ data: { groupName: 'Components' } });
-
-  const mainWarehouse = await prisma.warehouse.create({ data: { whsCode: '01', whsName: 'Main Warehouse' } });
-
-  const finishedGood = await prisma.item.create({
-    data: {
-      itemCode: 'FG001',
-      itemName: 'Custom PC - Pro',
-      itemType: 'I',
-      price: 1200.0,
-      currency: 'USD',
-      procurementMethod: 'M', // Make
-      itemGroupId: itemGroupFinished.id,
-    },
-  });
-
-  const componentA = await prisma.item.create({
-    data: {
-      itemCode: 'COMP001',
-      itemName: 'CPU Model X',
-      itemType: 'I',
-      price: 300.0,
-      currency: 'USD',
-      procurementMethod: 'B', // Buy
-      itemGroupId: itemGroupComponents.id,
-    },
-  });
-
-  const componentB = await prisma.item.create({
-    data: {
-      itemCode: 'COMP002',
-      itemName: 'GPU Model Y',
-      itemType: 'I',
-      price: 450.0,
-      currency: 'USD',
-      procurementMethod: 'B', // Buy
-      itemGroupId: itemGroupComponents.id,
-    },
-  });
-
-  await prisma.itemWarehouse.createMany({
+  console.log('Seeding warehouses and item groups...');
+  const warehouses = await prisma.warehouse.createManyAndReturn({
     data: [
-      { itemId: componentA.id, warehouseId: mainWarehouse.id, onHand: 100 },
-      { itemId: componentB.id, warehouseId: mainWarehouse.id, onHand: 50 },
-      { itemId: finishedGood.id, warehouseId: mainWarehouse.id, onHand: 10 },
+      { whsCode: '01', whsName: 'Main Warehouse' },
+      { whsCode: '02', whsName: 'Components Warehouse' },
+      { whsCode: '03', whsName: 'Finished Goods Store' },
+    ],
+  });
+  const itemGroups = await prisma.itemGroup.createManyAndReturn({
+    data: [
+      { groupName: 'Finished Goods' },
+      { groupName: 'Sub-assemblies' },
+      { groupName: 'Raw Materials' },
+      { groupName: 'Services' },
     ],
   });
 
-  // =================================================================
-  // Seed Production
-  // =================================================================
-  const bom = await prisma.billOfMaterials.create({
-    data: {
-      bomCode: 'BOM-FG001',
-      description: 'BOM for Custom PC - Pro',
-      parentItemId: finishedGood.id,
-      quantity: 1,
-      lines: {
-        create: [
-          { lineNumber: 1, childItemId: componentA.id, quantity: 1 },
-          { lineNumber: 2, childItemId: componentB.id, quantity: 1 },
-        ],
+  console.log(`Seeding ${ITEM_COUNT} items...`);
+  for (let i = 0; i < ITEM_COUNT; i++) {
+    const isMake = faker.datatype.boolean(0.3); // 30% are "Make" items
+    const item = await prisma.item.create({
+      data: {
+        itemCode: `ITM${String(i + 1).padStart(5, '0')}`,
+        itemName: faker.commerce.productName(),
+        itemType: 'I',
+        price: parseFloat(faker.commerce.price({ min: 10, max: 2000 })),
+        currency: 'USD',
+        procurementMethod: isMake ? 'M' : 'B',
+        itemGroupId: faker.helpers.arrayElement(itemGroups).id,
       },
-    },
-  });
+    });
 
-  await prisma.productionOrder.create({
-    data: {
-      docNum: 2001,
-      itemId: finishedGood.itemCode,
-      plannedQty: 10,
-      postingDate: new Date(),
-      dueDate: new Date(new Date().setDate(new Date().getDate() + 7)),
-    },
-  });
+    // Add inventory to warehouses
+    await prisma.itemWarehouse.create({
+      data: {
+        itemId: item.id,
+        warehouseId: faker.helpers.arrayElement(warehouses).id,
+        onHand: faker.number.int({ min: 0, max: 1000 }),
+      },
+    });
+  }
 
-  // =================================================================
-  // Seed Sales & Purchasing Documents
-  // =================================================================
-  await prisma.salesOrder.create({
-    data: {
-      docNum: 1001,
-      docDate: new Date(),
-      docDueDate: new Date(),
-      taxDate: new Date(),
-      docTotal: 2400.0,
-      businessPartnerId: customer.id,
-      lines: {
-        create: {
-          lineNum: 1,
-          itemCode: finishedGood.itemCode,
-          description: 'Custom PC - Pro',
-          quantity: 2,
-          openQty: 2,
-          price: 1200.0,
-          lineTotal: 2400.0,
+  const allItems = await prisma.item.findMany();
+  const makeItems = allItems.filter(i => i.procurementMethod === 'M');
+  const buyItems = allItems.filter(i => i.procurementMethod === 'B');
+  const allCustomers = await prisma.businessPartner.findMany({ where: { cardType: 'C' } });
+  const allSuppliers = await prisma.businessPartner.findMany({ where: { cardType: 'S' } });
+
+  console.log('Seeding Bills of Materials and Production Orders...');
+  let prodOrderDocNum = 20000;
+  for (const makeItem of makeItems) {
+    // Create BOM
+    const bom = await prisma.billOfMaterials.create({
+      data: {
+        bomCode: `BOM-${makeItem.itemCode}`,
+        description: `BOM for ${makeItem.itemName}`,
+        parentItemId: makeItem.id,
+        quantity: 1,
+      },
+    });
+    // Add components to BOM
+    const numComponents = faker.number.int({ min: 2, max: 5 });
+    for (let i = 0; i < numComponents; i++) {
+      const component = faker.helpers.arrayElement(buyItems);
+      await prisma.billOfMaterialsLine.create({
+        data: {
+          billOfMaterialsId: bom.id,
+          lineNumber: i + 1,
+          childItemId: component.id,
+          quantity: faker.number.int({ min: 1, max: 4 }),
+        },
+      });
+    }
+
+    // Create Production Order
+    await prisma.productionOrder.create({
+      data: {
+        docNum: prodOrderDocNum++,
+        itemId: makeItem.itemCode,
+        plannedQty: faker.number.int({ min: 10, max: 100 }),
+        postingDate: faker.date.past(),
+        dueDate: faker.date.future(),
+      },
+    });
+  }
+
+  console.log(`Seeding ${DOCUMENT_COUNT} sales and purchasing cycles...`);
+  for (let i = 0; i < DOCUMENT_COUNT; i++) {
+    // Sales Cycle
+    const customer = faker.helpers.arrayElement(allCustomers);
+    const salesItem = faker.helpers.arrayElement(allItems);
+    const salesQty = faker.number.int({ min: 1, max: 20 });
+    const salesTotal = salesItem.price * salesQty;
+
+    await prisma.salesOrder.create({
+      data: {
+        docNum: 10000 + i,
+        docStatus: faker.helpers.arrayElement([DocStatus.O, DocStatus.C]),
+        docDate: faker.date.past(),
+        docDueDate: faker.date.soon(),
+        taxDate: new Date(),
+        docTotal: salesTotal,
+        businessPartnerId: customer.id,
+        lines: {
+          create: {
+            lineNum: 1,
+            itemCode: salesItem.itemCode,
+            description: salesItem.itemName,
+            quantity: salesQty,
+            openQty: 0,
+            price: salesItem.price,
+            lineTotal: salesTotal,
+          },
         },
       },
-    },
-  });
+    });
 
-  await prisma.purchaseOrder.create({
-    data: {
-      docNum: 3001,
-      docDate: new Date(),
-      docDueDate: new Date(),
-      taxDate: new Date(),
-      docTotal: 3000.0,
-      businessPartnerId: supplier.id,
-      lines: {
-        create: {
-          lineNum: 1,
-          itemCode: componentA.itemCode,
-          description: 'CPU Model X',
-          quantity: 10,
-          openQty: 10,
-          price: 300.0,
-          lineTotal: 3000.0,
+    // Purchasing Cycle
+    const supplier = faker.helpers.arrayElement(allSuppliers);
+    const purchaseItem = faker.helpers.arrayElement(buyItems);
+    const purchaseQty = faker.number.int({ min: 10, max: 200 });
+    const purchaseTotal = purchaseItem.price * purchaseQty;
+
+    await prisma.purchaseOrder.create({
+      data: {
+        docNum: 30000 + i,
+        docStatus: faker.helpers.arrayElement([DocStatus.O, DocStatus.C]),
+        docDate: faker.date.past(),
+        docDueDate: faker.date.soon(),
+        taxDate: new Date(),
+        docTotal: purchaseTotal,
+        businessPartnerId: supplier.id,
+        lines: {
+          create: {
+            lineNum: 1,
+            itemCode: purchaseItem.itemCode,
+            description: purchaseItem.itemName,
+            quantity: purchaseQty,
+            openQty: 0,
+            price: purchaseItem.price,
+            lineTotal: purchaseTotal,
+          },
         },
       },
-    },
-  });
+    });
+  }
 
-  // =================================================================
-  // Seed Service Module
-  // =================================================================
-  const equipmentCard = await prisma.customerEquipmentCard.create({
-    data: {
-      itemCode: finishedGood.itemCode,
-      itemName: finishedGood.itemName,
-      serialNumber: 'SN-PRO-2024-001',
-      customerId: customer.id,
-    },
-  });
+  console.log('Seeding service module data...');
+  const soldItems = faker.helpers.arrayElements(makeItems, 50);
+  for (const item of soldItems) {
+    const customer = faker.helpers.arrayElement(allCustomers);
+    const serial = `SN-${item.itemCode}-${faker.string.alphanumeric(8).toUpperCase()}`;
+    
+    const equipmentCard = await prisma.customerEquipmentCard.create({
+      data: {
+        itemCode: item.itemCode,
+        itemName: item.itemName,
+        serialNumber: serial,
+        customerId: customer.id,
+      },
+    });
 
-  const serviceContract = await prisma.serviceContract.create({
-    data: {
-      contractName: 'Gold Support',
-      customerId: customer.id,
-      startDate: new Date(),
-      endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-      description: '24/7 Gold Level Support Contract',
-    },
-  });
+    // 25% chance of having a service contract
+    if (faker.datatype.boolean(0.25)) {
+        const contract = await prisma.serviceContract.create({
+            data: {
+                contractName: `${faker.helpers.arrayElement(['Gold', 'Silver', 'Bronze'])} Support`,
+                customerId: customer.id,
+                startDate: faker.date.past(),
+                endDate: faker.date.future(),
+            }
+        });
+        // Create a service call for contracted customers
+        await prisma.serviceCall.create({
+            data: {
+                subject: `Issue with ${item.itemName}`,
+                customerId: customer.id,
+                serialNumber: serial,
+                contractId: contract.id,
+                priority: faker.helpers.arrayElement(['H', 'M', 'L']),
+            }
+        });
+    }
+  }
 
-  await prisma.serviceCall.create({
-    data: {
-      subject: 'PC not booting up',
-      customerId: customer.id,
-      serialNumber: equipmentCard.serialNumber,
-      contractId: serviceContract.id,
-      priority: 'H',
-    },
-  });
-
-  console.log('Seeding finished.');
+  console.log('Seeding finished successfully!');
 }
 
 main()

@@ -203,6 +203,33 @@ export interface ServiceCallFormData {
   contractId?: string
 }
 
+export interface JournalEntryFormData {
+  memo?: string
+  refDate: Date
+  dueDate?: Date
+  taxDate?: Date
+  lines: {
+    accountId: string
+    debit: number
+    credit: number
+    shortName?: string
+    lineMemo?: string
+    businessPartnerId?: string
+  }[]
+}
+
+// Journal Entry types
+export type JournalEntryWithRelations = Prisma.JournalEntryGetPayload<{
+  include: {
+    lines: {
+      include: {
+        account: true
+        businessPartner: true
+      }
+    }
+  }
+}>
+
 // Form types
 export interface BusinessPartnerFormData {
   cardCode: string

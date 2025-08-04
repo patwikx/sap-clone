@@ -1,9 +1,9 @@
 
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
-import Link from 'next/link'
 import { ServiceCallsList } from './components/service-call-list'
 import { getServiceCalls } from '@/lib/actions/service-call'
+import { ServiceCallForm } from './components/service-call-form'
 
 export default async function ServiceCallsPage() {
   const serviceCalls = await getServiceCalls()
@@ -17,12 +17,12 @@ export default async function ServiceCallsPage() {
             Manage customer service requests and support tickets
           </p>
         </div>
-        <Link href="/service-calls/new">
+        <ServiceCallForm>
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Create Service Call
           </Button>
-        </Link>
+        </ServiceCallForm>
       </div>
 
       <ServiceCallsList serviceCalls={serviceCalls} />

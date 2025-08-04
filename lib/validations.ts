@@ -134,8 +134,29 @@ export const productionOrderSchema = z.object({
 export const serviceCallSchema = z.object({
   subject: z.string().min(1, 'Subject is required'),
   customerId: z.string().min(1, 'Customer is required'),
+  priority: z.enum(['L', 'M', 'H']),
   itemCode: z.string().optional(),
   serialNumber: z.string().optional(),
-  priority: z.enum(['L', 'M', 'H']).default('M'),
   contractId: z.string().optional()
+})
+
+export const journalEntrySchema = z.object({
+  memo: z.string().optional(),
+  refDate: z.date(),
+  dueDate: z.date().optional(),
+  taxDate: z.date().optional(),
+  lines: z.array(z.object({
+    accountId: z.string().min(1, 'Account is required'),
+    debit: z.number().min(0),
+    credit: z.number().min(0),
+    shortName: z.string().optional(),
+    lineMemo: z.string().optional(),
+    businessPartnerId: z.string().optional()
+  })).min(2, 'At least two lines are required')
+}).refine((data) => {
+  const totalDebits = data.lines.reduce((sum, line) => sum + line.debit, 0)
+  const totalCredits = data.lines.reduce((sum, line) => sum + line.credit, 0)
+  return Math.abs(totalDebits - totalCredits) < 0.01
+}, {
+  message: 'Total debits must equal total credits'
 })

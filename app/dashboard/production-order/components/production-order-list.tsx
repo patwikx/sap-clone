@@ -180,7 +180,7 @@ export function ProductionOrdersList({ productionOrders }: ProductionOrdersListP
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
-                          <Link href={`/production-orders/${order.id}`}>
+                          <Link href={`/dashboard/production-orders/${order.id}`}>
                             View Details
                           </Link>
                         </DropdownMenuItem>

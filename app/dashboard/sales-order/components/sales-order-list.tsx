@@ -149,7 +149,7 @@ export function SalesOrdersList({ salesOrders }: SalesOrdersListProps) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/sales-orders/${order.id}`}>
+                        <Link href={`/dashboard/sales-orders/${order.id}`}>
                           View Details
                         </Link>
                       </DropdownMenuItem>

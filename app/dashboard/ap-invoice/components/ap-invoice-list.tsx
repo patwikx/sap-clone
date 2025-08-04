@@ -150,7 +150,7 @@ export function APInvoicesList({ apInvoices }: APInvoicesListProps) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/ap-invoices/${invoice.id}`}>
+                        <Link href={`/dashboard/ap-invoices/${invoice.id}`}>
                           View Details
                         </Link>
                       </DropdownMenuItem>

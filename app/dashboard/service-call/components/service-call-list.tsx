@@ -209,7 +209,7 @@ export function ServiceCallsList({ serviceCalls }: ServiceCallsListProps) {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
-                          <Link href={`/service-calls/${call.id}`}>
+                          <Link href={`/dashboard/service-calls/${call.id}`}>
                             View Details
                           </Link>
                         </DropdownMenuItem>

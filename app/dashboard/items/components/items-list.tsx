@@ -133,12 +133,12 @@ export function ItemsList({ items }: ItemsListProps) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/items/${item.id}`}>
+                        <Link href={`/dashboard/items/${item.id}`}>
                           View Details
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href={`/items/${item.id}/edit`}>
+                        <Link href={`/dashboard/items/${item.id}/edit`}>
                           Edit
                         </Link>
                       </DropdownMenuItem>

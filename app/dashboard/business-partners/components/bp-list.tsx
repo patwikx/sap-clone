@@ -134,12 +134,12 @@ export function BusinessPartnersList({ partners }: BusinessPartnersListProps) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/business-partners/${partner.id}`}>
+                        <Link href={`/dashboard/business-partners/${partner.id}`}>
                           View Details
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href={`/business-partners/${partner.id}/edit`}>
+                        <Link href={`/dashboard/business-partners/${partner.id}/edit`}>
                           Edit
                         </Link>
                       </DropdownMenuItem>

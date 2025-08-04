@@ -148,12 +148,12 @@ export function AccountsList({ accounts }: AccountsListProps) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/accounts/${account.id}`}>
+                        <Link href={`/dashboard/chart-of-accounts/${account.id}`}>
                           View Details
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href={`/accounts/${account.id}/edit`}>
+                        <Link href={`/dashboard/chart-of-accounts/${account.id}/edit`}>
                           Edit
                         </Link>
                       </DropdownMenuItem>

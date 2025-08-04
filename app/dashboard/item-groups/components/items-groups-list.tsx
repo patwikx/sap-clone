@@ -80,7 +80,7 @@ export function ItemGroupsList({ itemGroups }: ItemGroupsListProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem asChild>
-                      <Link href={`/item-groups/${group.id}`}>
+                      <Link href={`/dashboard/item-groups/${group.id}`}>
                         View Details
                       </Link>
                     </DropdownMenuItem>

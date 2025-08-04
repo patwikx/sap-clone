@@ -101,12 +101,12 @@ export function EmployeesList({ employees }: EmployeesListProps) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/employees/${employee.id}`}>
+                        <Link href={`/dashboard/employees/${employee.id}`}>
                           View Details
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href={`/employees/${employee.id}/edit`}>
+                        <Link href={`/dashboard/employees/${employee.id}/edit`}>
                           Edit
                         </Link>
                       </DropdownMenuItem>

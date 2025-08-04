@@ -150,7 +150,7 @@ export function PurchaseOrdersList({ purchaseOrders }: PurchaseOrdersListProps) 
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/purchase-orders/${order.id}`}>
+                        <Link href={`/dashboard/purchase-orders/${order.id}`}>
                           View Details
                         </Link>
                       </DropdownMenuItem>

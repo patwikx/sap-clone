@@ -9,7 +9,7 @@ import {
   FileText,
   Wrench,
   AlertTriangle,
-  TrendingUp
+  TrendingUp,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { StatsCard } from '@/components/stats-card'

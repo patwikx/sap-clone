@@ -2,8 +2,9 @@
 import { Button } from '@/components/ui/button'
 import { getBusinessPartners } from '@/lib/business-partners'
 import { Plus } from 'lucide-react'
-import Link from 'next/link'
 import { BusinessPartnersList } from './components/bp-list'
+import { BusinessPartnerForm } from './components/bp-form'
+
 
 interface PageProps {
   searchParams: {
@@ -36,12 +37,12 @@ export default async function BusinessPartnersPage({ searchParams }: PageProps) 
             Manage your business relationships and partner information
           </p>
         </div>
-        <Link href="/business-partners/new">
+        <BusinessPartnerForm>
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Add Business Partner
           </Button>
-        </Link>
+        </BusinessPartnerForm>
       </div>
 
       <BusinessPartnersList partners={partners} />

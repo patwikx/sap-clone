@@ -6,39 +6,43 @@ export async function getDashboardStats() {
       businessPartners,
       items,
       employees,
-      openSalesOrders,
       openPurchaseOrders,
-      openServiceCalls,
-      recentSalesOrders,
+      openPOSOrders,
       recentPurchaseOrders,
+      recentPOSOrders,
       lowStockItems
     ] = await Promise.all([
       prisma.businessPartner.count(),
       prisma.item.count(),
       prisma.employee.count(),
-      prisma.salesOrder.count({ where: { docStatus: 'O' } }),
-      prisma.purchaseOrder.count({ where: { docStatus: 'O' } }),
-      prisma.serviceCall.count({ where: { status: -3 } }),
-      prisma.salesOrder.findMany({
-        take: 5,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          businessPartner: true
-        }
-      }),
+      prisma.purchaseOrder.count({ where: { status: 'OPEN' } }),
+      prisma.pOSOrder.count({ where: { status: 'OPEN' } }),
       prisma.purchaseOrder.findMany({
         take: 5,
         orderBy: { createdAt: 'desc' },
         include: {
-          businessPartner: true
+          supplier: true
+        }
+      }),
+      prisma.pOSOrder.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          customer: true,
+          table: true
         }
       }),
       prisma.item.findMany({
         where: {
-          onHand: { lte: 10 }
+          itemWarehouses: {
+            some: {
+              onHand: { lte: 10 }
+            }
+          }
         },
         include: {
-          itemGroup: true
+          itemGroup: true,
+          itemWarehouses: true
         },
         take: 10
       })
@@ -49,13 +53,12 @@ export async function getDashboardStats() {
         businessPartners,
         items,
         employees,
-        openSalesOrders,
         openPurchaseOrders,
-        openServiceCalls
+        openPOSOrders
       },
       recentActivity: {
-        salesOrders: recentSalesOrders,
-        purchaseOrders: recentPurchaseOrders
+        purchaseOrders: recentPurchaseOrders,
+        posOrders: recentPOSOrders
       },
       alerts: {
         lowStockItems
@@ -68,13 +71,12 @@ export async function getDashboardStats() {
         businessPartners: 0,
         items: 0,
         employees: 0,
-        openSalesOrders: 0,
         openPurchaseOrders: 0,
-        openServiceCalls: 0
+        openPOSOrders: 0
       },
       recentActivity: {
-        salesOrders: [],
-        purchaseOrders: []
+        purchaseOrders: [],
+        posOrders: []
       },
       alerts: {
         lowStockItems: []

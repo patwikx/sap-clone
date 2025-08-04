@@ -1,16 +1,40 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { ARInvoiceFormData } from '@/lib/types'
 import { revalidatePath } from 'next/cache'
 import { DocStatus } from '@prisma/client'
+import { Decimal } from '@prisma/client/runtime/library'
+
+// Define the form data interface based on the actual schema
+interface ARInvoiceFormData {
+  number: string
+  status: DocStatus
+  invoiceDate: Date
+  totalAmount: number
+  businessUnitId: string
+  customerId: string
+  lines: Array<{
+    itemId: string
+    description: string
+    quantity: number
+    unitPrice: number
+    lineTotal: number
+    taxCodeId?: string
+    taxAmount?: number
+  }>
+}
 
 export async function getARInvoices() {
   try {
     const arInvoices = await prisma.aRInvoice.findMany({
       include: {
-        businessPartner: true,
-        lines: true
+        customer: true,
+        lines: {
+          include: {
+            item: true,
+            taxCode: true
+          }
+        }
       },
       orderBy: { createdAt: 'desc' }
     })
@@ -21,13 +45,18 @@ export async function getARInvoices() {
   }
 }
 
-export async function getARInvoiceById(id: number) {
+export async function getARInvoiceById(id: string) {
   try {
     const arInvoice = await prisma.aRInvoice.findUnique({
       where: { id },
       include: {
-        businessPartner: true,
-        lines: true
+        customer: true,
+        lines: {
+          include: {
+            item: true,
+            taxCode: true
+          }
+        }
       }
     })
     return arInvoice
@@ -39,38 +68,23 @@ export async function getARInvoiceById(id: number) {
 
 export async function createARInvoice(data: ARInvoiceFormData) {
   try {
-    const lastInvoice = await prisma.aRInvoice.findFirst({
-      orderBy: { docNum: 'desc' }
-    })
-    const nextDocNum = (lastInvoice?.docNum || 0) + 1
-
-    const totalBeforeTax = data.lines.reduce((sum, line) => sum + (line.quantity * line.price), 0)
-    const taxAmount = totalBeforeTax * 0.12
-    const docTotal = totalBeforeTax + taxAmount
-
     const arInvoice = await prisma.aRInvoice.create({
       data: {
-        docNum: nextDocNum,
-        businessPartnerId: data.businessPartnerId,
-        docDate: data.docDate,
-        docDueDate: data.docDueDate,
-        taxDate: data.taxDate,
-        totalBeforeTax,
-        taxAmount,
-        docTotal,
-        comments: data.comments,
-        baseDocType: data.baseDocType,
-        baseDocNum: data.baseDocNum,
+        number: data.number,
+        status: data.status,
+        invoiceDate: data.invoiceDate,
+        totalAmount: new Decimal(data.totalAmount),
+        businessUnitId: data.businessUnitId,
+        customerId: data.customerId,
         lines: {
           create: data.lines.map(line => ({
-            itemCode: line.itemCode,
+            itemId: line.itemId,
             description: line.description,
-            quantity: line.quantity,
-            price: line.price,
-            lineTotal: line.quantity * line.price,
-            baseDocType: line.baseDocType,
-            baseDocNum: line.baseDocNum,
-            baseLineNum: line.baseLineNum
+            quantity: new Decimal(line.quantity),
+            unitPrice: new Decimal(line.unitPrice),
+            lineTotal: new Decimal(line.lineTotal),
+            taxCodeId: line.taxCodeId,
+            taxAmount: line.taxAmount ? new Decimal(line.taxAmount) : new Decimal(0)
           }))
         }
       }
@@ -84,11 +98,11 @@ export async function createARInvoice(data: ARInvoiceFormData) {
   }
 }
 
-export async function updateARInvoiceStatus(id: number, status: DocStatus) {
+export async function updateARInvoiceStatus(id: string, status: DocStatus) {
   try {
     const arInvoice = await prisma.aRInvoice.update({
       where: { id },
-      data: { docStatus: status }
+      data: { status: status }
     })
 
     revalidatePath('/dashboard/ar-invoice')
@@ -99,7 +113,7 @@ export async function updateARInvoiceStatus(id: number, status: DocStatus) {
   }
 }
 
-export async function deleteARInvoice(id: number) {
+export async function deleteARInvoice(id: string) {
   try {
     await prisma.aRInvoice.delete({
       where: { id }

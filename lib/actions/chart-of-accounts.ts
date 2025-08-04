@@ -1,13 +1,23 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { AccountFormData } from '@/lib/types'
 import { revalidatePath } from 'next/cache'
+
+// Define the form data interface based on the actual schema
+interface AccountFormData {
+  code: string
+  name: string
+  type: string
+  subType: string
+  parentAccountId?: string
+  level?: number
+  isControlAccount?: boolean
+}
 
 export async function getAccounts() {
   try {
     const accounts = await prisma.account.findMany({
-      orderBy: { acctCode: 'asc' }
+      orderBy: { code: 'asc' }
     })
     return accounts
   } catch (error) {
@@ -21,7 +31,7 @@ export async function getAccountById(id: string) {
     const account = await prisma.account.findUnique({
       where: { id },
       include: {
-        journalEntryLines: {
+        journalEntries: {
           include: {
             journalEntry: true
           },
@@ -41,10 +51,13 @@ export async function createAccount(data: AccountFormData) {
   try {
     const account = await prisma.account.create({
       data: {
-        acctCode: data.acctCode,
-        acctName: data.acctName,
-        acctType: data.acctType,
-        isControlAccount: data.isControlAccount
+        code: data.code,
+        name: data.name,
+        type: data.type,
+        subType: data.subType,
+        parentAccountId: data.parentAccountId,
+        level: data.level || 1,
+        isControlAccount: data.isControlAccount || false
       }
     })
 
@@ -61,10 +74,13 @@ export async function updateAccount(id: string, data: AccountFormData) {
     const account = await prisma.account.update({
       where: { id },
       data: {
-        acctCode: data.acctCode,
-        acctName: data.acctName,
-        acctType: data.acctType,
-        isControlAccount: data.isControlAccount
+        code: data.code,
+        name: data.name,
+        type: data.type,
+        subType: data.subType,
+        parentAccountId: data.parentAccountId,
+        level: data.level || 1,
+        isControlAccount: data.isControlAccount || false
       }
     })
 

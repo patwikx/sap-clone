@@ -2,19 +2,20 @@
 
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { Decimal } from '@prisma/client/runtime/library'
 
 interface JournalEntryFormData {
-  memo?: string
-  refDate: Date
-  dueDate?: Date
-  taxDate?: Date
+  number: string
+  date: Date
+  reference?: string
+  description: string
+  periodId: string
   lines: {
     accountId: string
-    debit: number
-    credit: number
-    shortName?: string
-    lineMemo?: string
-    businessPartnerId?: string
+    debitAmount: number
+    creditAmount: number
+    description?: string
+    costCenterId?: string
   }[]
 }
 
@@ -25,9 +26,10 @@ export async function getJournalEntries() {
         lines: {
           include: {
             account: true,
-            businessPartner: true
+            costCenter: true
           }
-        }
+        },
+        period: true
       },
       orderBy: { createdAt: 'desc' }
     })
@@ -38,7 +40,7 @@ export async function getJournalEntries() {
   }
 }
 
-export async function getJournalEntryById(id: number) {
+export async function getJournalEntryById(id: string) {
   try {
     const journalEntry = await prisma.journalEntry.findUnique({
       where: { id },
@@ -46,9 +48,10 @@ export async function getJournalEntryById(id: number) {
         lines: {
           include: {
             account: true,
-            businessPartner: true
+            costCenter: true
           }
-        }
+        },
+        period: true
       }
     })
     return journalEntry
@@ -60,20 +63,26 @@ export async function getJournalEntryById(id: number) {
 
 export async function createJournalEntry(data: JournalEntryFormData) {
   try {
+    // Calculate totals
+    const totalDebit = data.lines.reduce((sum, line) => sum + line.debitAmount, 0)
+    const totalCredit = data.lines.reduce((sum, line) => sum + line.creditAmount, 0)
+
     const journalEntry = await prisma.journalEntry.create({
       data: {
-        memo: data.memo,
-        refDate: data.refDate,
-        dueDate: data.dueDate,
-        taxDate: data.taxDate,
+        number: data.number,
+        date: data.date,
+        reference: data.reference,
+        description: data.description,
+        totalDebit: new Decimal(totalDebit),
+        totalCredit: new Decimal(totalCredit),
+        periodId: data.periodId,
         lines: {
           create: data.lines.map(line => ({
             accountId: line.accountId,
-            debit: line.debit,
-            credit: line.credit,
-            shortName: line.shortName,
-            lineMemo: line.lineMemo,
-            businessPartnerId: line.businessPartnerId
+            debitAmount: new Decimal(line.debitAmount),
+            creditAmount: new Decimal(line.creditAmount),
+            description: line.description,
+            costCenterId: line.costCenterId
           }))
         }
       }
@@ -87,17 +96,17 @@ export async function createJournalEntry(data: JournalEntryFormData) {
       
       if (account) {
         let balanceChange = 0
-        if (['asset', 'expense'].includes(account.acctType)) {
-          balanceChange = line.debit - line.credit
+        if (['ASSET', 'EXPENSE'].includes(account.type.toUpperCase())) {
+          balanceChange = line.debitAmount - line.creditAmount
         } else {
-          balanceChange = line.credit - line.debit
+          balanceChange = line.creditAmount - line.debitAmount
         }
 
         await prisma.account.update({
           where: { id: line.accountId },
           data: {
             balance: {
-              increment: balanceChange
+              increment: new Decimal(balanceChange)
             }
           }
         })
@@ -112,7 +121,7 @@ export async function createJournalEntry(data: JournalEntryFormData) {
   }
 }
 
-export async function deleteJournalEntry(id: number) {
+export async function deleteJournalEntry(id: string) {
   try {
     await prisma.journalEntry.delete({
       where: { id }

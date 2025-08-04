@@ -9,7 +9,7 @@ export async function getItemGroups() {
       include: {
         items: true
       },
-      orderBy: { groupName: 'asc' }
+      orderBy: { name: 'asc' }
     })
     return itemGroups
   } catch (error) {
@@ -18,11 +18,11 @@ export async function getItemGroups() {
   }
 }
 
-export async function createItemGroup(data: { groupName: string }) {
+export async function createItemGroup(data: { name: string }) {
   try {
     const itemGroup = await prisma.itemGroup.create({
       data: {
-        groupName: data.groupName
+        name: data.name
       }
     })
 

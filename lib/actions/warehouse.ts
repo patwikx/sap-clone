@@ -13,7 +13,7 @@ export async function getWarehouses() {
           }
         }
       },
-      orderBy: { whsName: 'asc' }
+      orderBy: { name: 'asc' }
     })
     return warehouses
   } catch (error) {
@@ -22,12 +22,12 @@ export async function getWarehouses() {
   }
 }
 
-export async function createWarehouse(data: { whsCode: string; whsName: string }) {
+export async function createWarehouse(data: { code: string; name: string }) {
   try {
     const warehouse = await prisma.warehouse.create({
       data: {
-        whsCode: data.whsCode,
-        whsName: data.whsName
+        code: data.code,
+        name: data.name
       }
     })
 

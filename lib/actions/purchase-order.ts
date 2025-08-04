@@ -1,16 +1,39 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { PurchaseOrderFormData } from '@/lib/types'
 import { revalidatePath } from 'next/cache'
 import { DocStatus } from '@prisma/client'
+import { Decimal } from '@prisma/client/runtime/library'
+
+// Define the form data interface based on the actual schema
+interface PurchaseOrderFormData {
+  number: string
+  status: DocStatus
+  orderDate: Date
+  dueDate: Date
+  totalAmount: number
+  businessUnitId: string
+  supplierId: string
+  purchaseRequestId?: string
+  lines: {
+    itemId: string
+    description: string
+    quantity: number
+    unitPrice: number
+    lineTotal: number
+  }[]
+}
 
 export async function getPurchaseOrders() {
   try {
     const purchaseOrders = await prisma.purchaseOrder.findMany({
       include: {
-        businessPartner: true,
-        lines: true
+        supplier: true,
+        lines: {
+          include: {
+            item: true
+          }
+        }
       },
       orderBy: { createdAt: 'desc' }
     })
@@ -21,13 +44,17 @@ export async function getPurchaseOrders() {
   }
 }
 
-export async function getPurchaseOrderById(id: number) {
+export async function getPurchaseOrderById(id: string) {
   try {
     const purchaseOrder = await prisma.purchaseOrder.findUnique({
       where: { id },
       include: {
-        businessPartner: true,
-        lines: true
+        supplier: true,
+        lines: {
+          include: {
+            item: true
+          }
+        }
       }
     })
     return purchaseOrder
@@ -39,34 +66,23 @@ export async function getPurchaseOrderById(id: number) {
 
 export async function createPurchaseOrder(data: PurchaseOrderFormData) {
   try {
-    const lastOrder = await prisma.purchaseOrder.findFirst({
-      orderBy: { docNum: 'desc' }
-    })
-    const nextDocNum = (lastOrder?.docNum || 0) + 1
-
-    const totalBeforeTax = data.lines.reduce((sum, line) => sum + (line.quantity * line.price), 0)
-    const taxAmount = totalBeforeTax * 0.12
-    const docTotal = totalBeforeTax + taxAmount
-
     const purchaseOrder = await prisma.purchaseOrder.create({
       data: {
-        docNum: nextDocNum,
-        businessPartnerId: data.businessPartnerId,
-        docDate: data.docDate,
-        docDueDate: data.docDueDate,
-        taxDate: data.taxDate,
-        totalBeforeTax,
-        taxAmount,
-        docTotal,
-        comments: data.comments,
+        number: data.number,
+        status: data.status,
+        orderDate: data.orderDate,
+        dueDate: data.dueDate,
+        totalAmount: new Decimal(data.totalAmount),
+        businessUnitId: data.businessUnitId,
+        supplierId: data.supplierId,
+        purchaseRequestId: data.purchaseRequestId,
         lines: {
           create: data.lines.map(line => ({
-            itemCode: line.itemCode,
+            itemId: line.itemId,
             description: line.description,
-            quantity: line.quantity,
-            openQty: line.quantity,
-            price: line.price,
-            lineTotal: line.quantity * line.price
+            quantity: new Decimal(line.quantity),
+            unitPrice: new Decimal(line.unitPrice),
+            lineTotal: new Decimal(line.lineTotal)
           }))
         }
       }
@@ -80,11 +96,11 @@ export async function createPurchaseOrder(data: PurchaseOrderFormData) {
   }
 }
 
-export async function updatePurchaseOrderStatus(id: number, status: DocStatus) {
+export async function updatePurchaseOrderStatus(id: string, status: DocStatus) {
   try {
     const purchaseOrder = await prisma.purchaseOrder.update({
       where: { id },
-      data: { docStatus: status }
+      data: { status: status }
     })
 
     revalidatePath('/dashboard/purchase-orders')
@@ -95,7 +111,7 @@ export async function updatePurchaseOrderStatus(id: number, status: DocStatus) {
   }
 }
 
-export async function deletePurchaseOrder(id: number) {
+export async function deletePurchaseOrder(id: string) {
   try {
     await prisma.purchaseOrder.delete({
       where: { id }

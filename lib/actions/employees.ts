@@ -1,6 +1,52 @@
 import { prisma } from '@/lib/prisma'
-import { EmployeeFormData, EmployeeWithRelations } from '@/lib/types'
 import { revalidatePath } from 'next/cache'
+
+// Define the form data interface based on the actual schema
+interface EmployeeFormData {
+  firstName: string
+  lastName: string
+  email: string
+  jobTitle?: string
+  department?: string
+  managerId?: string
+  businessUnitId: string
+  userId?: string
+}
+
+// Define the employee with relations interface
+interface EmployeeWithRelations {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  jobTitle?: string
+  department?: string
+  managerId?: string
+  businessUnitId: string
+  userId?: string
+  createdAt: Date
+  updatedAt: Date
+  deletedAt?: Date
+  isActive: boolean
+  user?: {
+    id: string
+    email: string
+  }
+  manager?: {
+    id: string
+    firstName: string
+    lastName: string
+  }
+  subordinates: Array<{
+    id: string
+    firstName: string
+    lastName: string
+  }>
+  businessUnit: {
+    id: string
+    name: string
+  }
+}
 
 export async function getEmployees(): Promise<EmployeeWithRelations[]> {
   try {
@@ -47,8 +93,6 @@ export async function createEmployee(data: EmployeeFormData) {
         jobTitle: data.jobTitle,
         department: data.department,
         managerId: data.managerId,
-        officePhone: data.officePhone,
-        mobilePhone: data.mobilePhone,
         email: data.email,
         businessUnitId: data.businessUnitId,
         userId: data.userId
@@ -73,8 +117,6 @@ export async function updateEmployee(id: string, data: EmployeeFormData) {
         jobTitle: data.jobTitle,
         department: data.department,
         managerId: data.managerId,
-        officePhone: data.officePhone,
-        mobilePhone: data.mobilePhone,
         email: data.email,
         businessUnitId: data.businessUnitId,
         userId: data.userId

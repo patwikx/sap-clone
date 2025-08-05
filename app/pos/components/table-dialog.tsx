@@ -107,14 +107,14 @@ export function TableDialog({
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm">Qty: {item.quantity}</span>
-                          <span className="font-medium">${(Number(item.price) * item.quantity).toFixed(2)}</span>
+                          <span className="font-medium">₱{(Number(item.price) * item.quantity).toFixed(2)}</span>
                         </div>
                       </div>
                     ))}
                     <div className="border-t pt-3">
                       <div className="flex justify-between items-center font-bold">
                         <span>Total:</span>
-                        <span>${tableTotal.toFixed(2)}</span>
+                        <span>₱{tableTotal.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
@@ -153,7 +153,7 @@ export function TableDialog({
                           <p className="text-xs text-gray-500 truncate">{item.code}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-green-600 text-sm">${Number(item.price).toFixed(2)}</p>
+                          <p className="font-bold text-green-600 text-sm">₱{Number(item.price).toFixed(2)}</p>
                           <Plus className="h-4 w-4 text-gray-400 mx-auto mt-1" />
                         </div>
                       </div>

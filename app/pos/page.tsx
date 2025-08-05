@@ -71,7 +71,7 @@ export default async function POSPage() {
             <DollarSign className="h-5 w-5 text-green-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">${todaySales.toFixed(2)}</div>
+            <div className="text-3xl font-bold">₱{todaySales.toFixed(2)}</div>
             <p className="text-xs text-green-200">
               {todayOrders.length} orders
             </p>
@@ -98,7 +98,7 @@ export default async function POSPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              ${todayOrders.length > 0 ? (todaySales / todayOrders.length).toFixed(2) : '0.00'}
+              ₱{todayOrders.length > 0 ? (todaySales / todayOrders.length).toFixed(2) : '0.00'}
             </div>
             <p className="text-xs text-purple-200">
               per transaction
@@ -206,7 +206,7 @@ export default async function POSPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-green-600 text-lg">${Number(order.totalAmount).toFixed(2)}</p>
+                    <p className="font-bold text-green-600 text-lg">₱{Number(order.totalAmount).toFixed(2)}</p>
                     <Badge variant={
                       order.status === 'Served' ? 'default' :
                       order.status === 'Preparing' ? 'secondary' :

@@ -177,7 +177,7 @@ export function ShiftDialog({ children, currentShift, onStartShift, onEndShift }
                   <strong>Shift Started:</strong> {new Date(currentShift.startTime).toLocaleString()}
                 </p>
                 <p className="text-sm text-gray-600">
-                  <strong>Starting Amount:</strong> ${Number(currentShift.startAmount).toFixed(2)}
+                  <strong>Starting Amount:</strong> ₱{Number(currentShift.startAmount).toFixed(2)}
                 </p>
                 <p className="text-sm text-gray-600">
                   <strong>Cashier:</strong> {currentShift.user.employee?.firstName} {currentShift.user.employee?.lastName}

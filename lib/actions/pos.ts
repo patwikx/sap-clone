@@ -439,21 +439,28 @@ export async function getMenus(businessUnitId?: string): Promise<MenuWithRelatio
 
 export async function getMenuItems(businessUnitId?: string): Promise<MenuItemWithDetails[]> {
   try {
-    const where: { type: string; businessUnitId?: string } = {
-      type: 'M' // Menu items
-    }
-
-    if (businessUnitId) {
-      where.businessUnitId = businessUnitId
-    }
-
+    // Get all sellable service items (including rooms, food, beverages, etc.)
     const menuItems = await prisma.item.findMany({
-      where,
+      where: {
+        isActive: true
+      },
+      include: {
+        itemGroup: true
+      },
       orderBy: { name: 'asc' }
     })
 
-    console.log('Found menu items:', menuItems.length)
-    return menuItems as unknown as MenuItemWithDetails[]
+    console.log('Found sellable items:', menuItems.length)
+    return menuItems.map(item => ({
+      id: item.id,
+      name: item.name,
+      code: item.code,
+      type: item.type,
+      price: item.price,
+      cost: item.cost,
+      currency: item.currency,
+      isActive: item.isActive
+    })) as MenuItemWithDetails[]
   } catch (error) {
     console.error('Error getting menu items:', error)
     return []
@@ -833,5 +840,26 @@ export async function printReceipt(orderId: string) {
   } catch (error) {
     console.error('Error printing receipt:', error)
     return { success: false, error: 'Failed to print receipt' }
+  }
+}
+
+// Debug function to check all items
+export async function getAllItems(): Promise<MenuItemWithDetails[]> {
+  try {
+    const items = await prisma.item.findMany({
+      where: {
+        isActive: true
+      },
+      include: {
+        itemGroup: true
+      },
+      orderBy: { name: 'asc' }
+    })
+
+    console.log('All items in database:', items.length)
+    return items
+  } catch (error) {
+    console.error('Error getting all items:', error)
+    return []
   }
 }

@@ -1119,10 +1119,11 @@ model Item {
   apInvoiceLines         APInvoiceLine[]
   posReturnLines         POSReturnLine[]
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   deletedAt DateTime?
-  isActive  Boolean   @default(true)
+  isActive  Boolean    @default(true)
+  MenuItem  MenuItem[]
 
   @@index([code])
   @@index([name])
@@ -1973,6 +1974,7 @@ model Menu {
   businessUnitId String
 
   businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id])
+  menuItems    MenuItem[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -1981,6 +1983,25 @@ model Menu {
 
   @@index([businessUnitId])
   @@map("menus")
+}
+
+model MenuItem {
+  id       String  @id @default(cuid())
+  menuId   String
+  itemId   String
+  position Int     @default(0)
+  isActive Boolean @default(true)
+
+  menu Menu @relation(fields: [menuId], references: [id])
+  item Item @relation(fields: [itemId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([menuId, itemId])
+  @@index([menuId])
+  @@index([itemId])
+  @@map("menu_items")
 }
 
 model RestaurantTable {

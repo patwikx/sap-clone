@@ -85,7 +85,7 @@ export function PaymentDialog({
   }
 
   const handlePaymentSubmit = () => {
-    if (remainingAmount > 0.01) {
+    if (remainingAmount > 0.005) { // Allow for rounding differences
       return
     }
 
@@ -115,7 +115,7 @@ export function PaymentDialog({
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center">
             Complete Payment
-            <div className="text-3xl font-bold text-green-600 mt-2">${total.toFixed(2)}</div>
+            <div className="text-3xl font-bold text-green-600 mt-2">₱{total.toFixed(2)}</div>
           </DialogTitle>
         </DialogHeader>
 
@@ -156,10 +156,10 @@ export function PaymentDialog({
               />
               <Button 
                 onClick={addCustomAmount} 
-                disabled={!customAmount}
+                disabled={remainingAmount > 0.005}
                 className="px-4"
               >
-                <Plus className="h-4 w-4" />
+                {remainingAmount > 0.005 ? `₱${remainingAmount.toFixed(2)} Remaining` : 'Complete Payment'}
               </Button>
               </div>
             </div>
@@ -202,7 +202,7 @@ export function PaymentDialog({
                     <div className="text-left">
                       <div className="font-medium">{discount.name}</div>
                       <div className="text-xs text-gray-500">
-                        {discount.type === 'Percentage' ? `${discount.value}%` : `$${discount.value}`}
+                        {discount.type === 'Percentage' ? `${discount.value}%` : `₱${discount.value}`}
                       </div>
                     </div>
                   </Button>
@@ -224,7 +224,7 @@ export function PaymentDialog({
                     <div key={discount.discountId} className="flex items-center justify-between mb-2 last:mb-0">
                       <span className="text-sm font-medium">{discount.discountName}</span>
                       <div className="flex items-center space-x-2">
-                        <span className="text-sm font-bold text-orange-700">-${discount.amount.toFixed(2)}</span>
+                        <span className="text-sm font-bold text-orange-700">-₱{discount.amount.toFixed(2)}</span>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -249,7 +249,7 @@ export function PaymentDialog({
                     <div key={`${payment.paymentMethodId}-${index}`} className="flex items-center justify-between mb-2 last:mb-0">
                       <span className="text-sm font-medium">{payment.paymentMethodName}</span>
                       <div className="flex items-center space-x-2">
-                        <span className="text-sm font-bold text-blue-700">${payment.amount.toFixed(2)}</span>
+                        <span className="text-sm font-bold text-blue-700">₱{payment.amount.toFixed(2)}</span>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -270,32 +270,32 @@ export function PaymentDialog({
               <CardContent className="p-4 space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal:</span>
-                  <span className="font-semibold">${total.toFixed(2)}</span>
+                  <span className="font-semibold">₱{total.toFixed(2)}</span>
                 </div>
                 {appliedDiscounts.length > 0 && (
                   <div className="flex justify-between text-red-600">
                     <span className="font-medium">Total Discount:</span>
-                    <span className="font-bold">-${appliedDiscounts.reduce((sum, d) => sum + d.amount, 0).toFixed(2)}</span>
+                    <span className="font-bold">-₱{appliedDiscounts.reduce((sum, d) => sum + d.amount, 0).toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-lg border-t border-gray-300 pt-2">
                   <span className="text-gray-800">Total Due:</span>
-                  <span className="text-green-600">${discountedTotal.toFixed(2)}</span>
+                  <span className="text-green-600">₱{discountedTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount Paid:</span>
-                  <span className="font-semibold text-blue-600">${paidAmount.toFixed(2)}</span>
+                  <span className="font-semibold text-blue-600">₱{paidAmount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Remaining:</span>
                   <span className={`font-bold ${remainingAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    ${remainingAmount.toFixed(2)}
+                    ₱{remainingAmount.toFixed(2)}
                   </span>
                 </div>
                 {changeAmount > 0 && (
                   <div className="flex justify-between text-purple-600 font-bold text-lg border-t border-gray-300 pt-2">
                     <span>Change Due:</span>
-                    <span className="text-2xl">${changeAmount.toFixed(2)}</span>
+                    <span className="text-2xl">₱{changeAmount.toFixed(2)}</span>
                   </div>
                 )}
               </CardContent>
@@ -306,7 +306,7 @@ export function PaymentDialog({
               onClick={handlePaymentSubmit}
               disabled={remainingAmount > 0.01}
             >
-              {remainingAmount > 0.01 ? `$${remainingAmount.toFixed(2)} Remaining` : 'Complete Payment'}
+              {remainingAmount > 0.01 ? `₱${remainingAmount.toFixed(2)} Remaining` : 'Complete Payment'}
             </Button>
           </div>
         </div>

@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Clock, User, MapPin, Utensils, CheckCircle, AlertCircle } from 'lucide-react'
 import { KitchenOrderData } from '@/lib/types'
-import { format } from 'date-fns'
 
 interface KitchenOrderCardProps {
   order: KitchenOrderData
@@ -136,37 +135,57 @@ export function KitchenOrderCard({ order, status, statusColor }: KitchenOrderCar
         {/* Action Buttons */}
         <div className="flex space-x-2">
           {status === 'Pending' && (
-            <Button 
-              size="sm" 
-              className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white"
-            >
-              Start Preparing
-            </Button>
+            <>
+              <Button 
+                size="sm" 
+                className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white"
+              >
+                Start Preparing
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="px-3 border-red-300 text-red-600 hover:bg-red-50"
+              >
+                Reject
+              </Button>
+            </>
           )}
           {status === 'Preparing' && (
-            <Button 
-              size="sm" 
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-            >
-              Mark Ready
-            </Button>
+            <>
+              <Button 
+                size="sm" 
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              >
+                Mark Ready
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="px-3 border-gray-300 hover:bg-gray-50"
+              >
+                Pause
+              </Button>
+            </>
           )}
           {status === 'Ready' && (
-            <Button 
-              size="sm" 
-              variant="outline" 
-              className="flex-1 border-green-500 text-green-600 hover:bg-green-50"
-            >
-              Served
-            </Button>
+            <>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="flex-1 border-green-500 text-green-600 hover:bg-green-50"
+              >
+                Served
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="px-3 border-blue-300 text-blue-600 hover:bg-blue-50"
+              >
+                Print
+              </Button>
+            </>
           )}
-          <Button 
-            size="sm" 
-            variant="outline" 
-            className="px-3 border-gray-300 hover:bg-gray-50"
-          >
-            View Details
-          </Button>
         </div>
       </CardContent>
     </Card>

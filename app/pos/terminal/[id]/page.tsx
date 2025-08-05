@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback, use } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   Monitor, 
   Clock, 
@@ -14,13 +18,16 @@ import {
   AlertCircle,
   CheckCircle,
   XCircle,
-  RefreshCw
+  RefreshCw,
+  Plus
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { getPOSTerminalById, getRecentOrdersByTerminal } from '@/lib/actions/pos'
+import { getPOSTerminalById, getRecentOrdersByTerminal, startPOSShift } from '@/lib/actions/pos'
+import { getUsers } from '@/lib/actions/user'
 import { POSTerminalWithShifts, POSOrderWithDetails } from '@/lib/types'
 import { format } from 'date-fns'
 import Link from 'next/link'
+
 interface TerminalPageProps {
   params: Promise<{
     id: string
@@ -31,18 +38,25 @@ export default function TerminalPage({ params }: TerminalPageProps) {
   const resolvedParams = use(params) as { id: string }
   const [terminal, setTerminal] = useState<POSTerminalWithShifts | null>(null)
   const [recentOrders, setRecentOrders] = useState<POSOrderWithDetails[]>([])
+  const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isShiftDialogOpen, setIsShiftDialogOpen] = useState(false)
+  const [selectedUserId, setSelectedUserId] = useState('')
+  const [startAmount, setStartAmount] = useState('0.00')
+  const [isCreatingShift, setIsCreatingShift] = useState(false)
 
   const loadTerminalData = useCallback(async () => {
     try {
-      const [terminalData, ordersData] = await Promise.all([
+      const [terminalData, ordersData, usersData] = await Promise.all([
         getPOSTerminalById(resolvedParams.id),
-        getRecentOrdersByTerminal(resolvedParams.id, 10)
+        getRecentOrdersByTerminal(resolvedParams.id, 10),
+        getUsers()
       ])
       
       setTerminal(terminalData)
       setRecentOrders(ordersData)
+      setUsers(usersData)
     } catch (error) {
       console.error('Error loading terminal data:', error)
       toast.error('Failed to load terminal data')
@@ -56,6 +70,33 @@ export default function TerminalPage({ params }: TerminalPageProps) {
     await loadTerminalData()
     setIsRefreshing(false)
     toast.success('Data refreshed')
+  }
+
+  const handleCreateShift = async () => {
+    if (!selectedUserId || !startAmount) {
+      toast.error('Please select a user and enter start amount')
+      return
+    }
+
+    setIsCreatingShift(true)
+    try {
+      const result = await startPOSShift(resolvedParams.id, selectedUserId, parseFloat(startAmount))
+      
+      if (result.success) {
+        toast.success('Shift started successfully')
+        setIsShiftDialogOpen(false)
+        setSelectedUserId('')
+        setStartAmount('0.00')
+        await loadTerminalData() // Refresh data to show new shift
+      } else {
+        toast.error(result.error || 'Failed to start shift')
+      }
+    } catch (error) {
+      console.error('Error creating shift:', error)
+      toast.error('Failed to start shift')
+    } finally {
+      setIsCreatingShift(false)
+    }
   }
 
   useEffect(() => {
@@ -109,7 +150,7 @@ export default function TerminalPage({ params }: TerminalPageProps) {
           </p>
         </div>
         <div className="flex gap-3">
-          {currentShift && (
+          {currentShift ? (
             <Link href={`/pos/interface/${terminal.id}`}>
               <Button 
                 className="h-12 px-6 bg-green-600 hover:bg-green-700"
@@ -118,6 +159,62 @@ export default function TerminalPage({ params }: TerminalPageProps) {
                 Start POS Session
               </Button>
             </Link>
+          ) : (
+            <Dialog open={isShiftDialogOpen} onOpenChange={setIsShiftDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="h-12 px-6 bg-blue-600 hover:bg-blue-700">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Start New Shift
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Start New Shift</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="user">Select User</Label>
+                    <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a user" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users.map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.name} ({user.email})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="startAmount">Start Amount (₱)</Label>
+                    <Input
+                      id="startAmount"
+                      type="number"
+                      step="0.01"
+                      value={startAmount}
+                      onChange={(e) => setStartAmount(e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsShiftDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleCreateShift}
+                      disabled={isCreatingShift || !selectedUserId || !startAmount}
+                    >
+                      {isCreatingShift ? 'Starting...' : 'Start Shift'}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           )}
           <Button 
             onClick={refreshData} 
@@ -157,7 +254,7 @@ export default function TerminalPage({ params }: TerminalPageProps) {
             <DollarSign className="h-5 w-5 text-green-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">${todaySales.toFixed(2)}</div>
+            <div className="text-3xl font-bold">₱{todaySales.toFixed(2)}</div>
             <p className="text-xs text-green-200">
               {todayOrders.length} orders today
             </p>
@@ -170,7 +267,7 @@ export default function TerminalPage({ params }: TerminalPageProps) {
             <TrendingUp className="h-5 w-5 text-purple-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">${averageOrderValue.toFixed(2)}</div>
+            <div className="text-3xl font-bold">₱{averageOrderValue.toFixed(2)}</div>
             <p className="text-xs text-purple-200">
               per transaction
             </p>
@@ -269,7 +366,7 @@ export default function TerminalPage({ params }: TerminalPageProps) {
                   </div>
                   <div>
                     <label className="text-gray-500">Start Amount</label>
-                    <p className="font-semibold">${Number(currentShift.startAmount).toFixed(2)}</p>
+                    <p className="font-semibold">₱{Number(currentShift.startAmount).toFixed(2)}</p>
                   </div>
                 </div>
               </div>
@@ -319,7 +416,7 @@ export default function TerminalPage({ params }: TerminalPageProps) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-gray-800">${Number(order.totalAmount).toFixed(2)}</p>
+                    <p className="font-bold text-gray-800">₱{Number(order.totalAmount).toFixed(2)}</p>
                     <p className="text-xs text-gray-500">{order.lines.length} items</p>
                   </div>
                 </div>

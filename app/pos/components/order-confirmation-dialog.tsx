@@ -6,14 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { 
-  Receipt, 
   Printer, 
   Download, 
-  X,
   CheckCircle,
-  Clock,
-  User,
-  CreditCard
 } from 'lucide-react'
 import { CartItem, RestaurantTableWithDetails, BusinessPartnerForPOS } from '@/lib/types'
 
@@ -78,7 +73,7 @@ export function OrderConfirmationDialog({
 
         <div className="flex gap-6 h-full overflow-hidden">
           {/* Left Side - Bill Details */}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col max-h-[70vh] overflow-y-auto">
             {/* Bill Information */}
             <Card className="mb-4">
               <CardHeader>
@@ -147,36 +142,36 @@ export function OrderConfirmationDialog({
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Sub Total:</span>
-                      <span className="font-semibold">${orderData.subtotal.toFixed(2)}</span>
+                      <span className="font-semibold">₱{orderData.subtotal.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Tax:</span>
-                      <span className="font-semibold">${orderData.tax.toFixed(2)}</span>
+                      <span className="font-semibold">₱{orderData.tax.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Service Charge:</span>
-                      <span className="font-semibold">${orderData.serviceCharge.toFixed(2)}</span>
+                      <span className="font-semibold">₱{orderData.serviceCharge.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Discount:</span>
-                      <span className="font-semibold text-green-600">-${orderData.discount.toFixed(2)}</span>
+                      <span className="font-semibold text-green-600">-₱{orderData.discount.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Tips:</span>
-                      <span className="font-semibold">${orderData.tips.toFixed(2)}</span>
+                      <span className="font-semibold">₱{orderData.tips.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between font-bold text-lg border-t pt-2">
                       <span>Total:</span>
-                      <span className="text-green-600">${orderData.total.toFixed(2)}</span>
+                      <span className="text-green-600">₱{orderData.total.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Payment:</span>
-                      <span className="font-semibold">${orderData.paymentAmount.toFixed(2)}</span>
+                      <span className="font-semibold">₱{orderData.paymentAmount.toFixed(2)}</span>
                     </div>
                     {orderData.change > 0 && (
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Change:</span>
-                        <span className="font-semibold text-blue-600">${orderData.change.toFixed(2)}</span>
+                        <span className="font-semibold text-blue-600">₱{orderData.change.toFixed(2)}</span>
                       </div>
                     )}
                   </div>
@@ -186,9 +181,9 @@ export function OrderConfirmationDialog({
           </div>
 
           {/* Right Side - Item List and Actions */}
-          <div className="w-96 flex flex-col">
+          <div className="w-80 flex flex-col">
             {/* Item List */}
-            <Card className="flex-1 mb-4">
+            <Card className="flex-1 mb-4 max-h-96 overflow-y-auto">
               <CardHeader>
                 <CardTitle className="text-lg">Ordered Items</CardTitle>
               </CardHeader>
@@ -201,11 +196,11 @@ export function OrderConfirmationDialog({
                           <span className="text-xs text-gray-500">#{index + 1}</span>
                           <h4 className="font-medium text-sm">{item.description}</h4>
                         </div>
-                        <p className="text-xs text-gray-500">${item.price.toFixed(2)} each</p>
+                        <p className="text-xs text-gray-500">₱{item.price.toFixed(2)} each</p>
                       </div>
                       <div className="text-right">
                         <span className="text-sm font-semibold">Qty: {item.quantity}</span>
-                        <div className="font-bold text-sm">${item.total.toFixed(2)}</div>
+                        <div className="font-bold text-sm">₱{item.total.toFixed(2)}</div>
                       </div>
                     </div>
                   ))}
@@ -219,7 +214,7 @@ export function OrderConfirmationDialog({
                 <Button 
                   onClick={handlePrint}
                   disabled={isPrinting}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-600 hover:bg-blue-700 h-10"
                 >
                   <Printer className="h-4 w-4 mr-2" />
                   {isPrinting ? 'Printing...' : 'Print Bill'}
@@ -227,6 +222,7 @@ export function OrderConfirmationDialog({
                 <Button 
                   onClick={handleDownload}
                   variant="outline"
+                  className="h-10"
                 >
                   <Download className="h-4 w-4 mr-2" />
                   Download
@@ -235,10 +231,10 @@ export function OrderConfirmationDialog({
               
               <Button 
                 onClick={onClose}
-                className="w-full bg-green-600 hover:bg-green-700"
+                className="w-full bg-green-600 hover:bg-green-700 h-12 text-base font-semibold"
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
-                Close
+                New Order
               </Button>
             </div>
           </div>
